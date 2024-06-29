@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 void parseFirstLine (char *line, int *result_numbers) {
     char *token = strtok(line, ",");
@@ -68,9 +69,9 @@ void parseNumbersOfMatrix (float *result, char *values_a, char *values_b, char *
 int main() {
 
     // Implement all File Paths + open files in readmode
-    const char *filePath_input_a = "input_a.txt";
-    const char *filePath_input_b = "input_b.txt";
-    const char *filePath_output = "output.txt";
+    const char *filePath_input_a = "files/input_a.txt";
+    const char *filePath_input_b = "files/input_b.txt";
+    const char *filePath_output = "files/output.txt";
 
     FILE *input_a = fopen(filePath_input_a, "r");
     FILE *input_b = fopen(filePath_input_b, "r");
