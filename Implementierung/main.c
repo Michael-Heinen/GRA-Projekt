@@ -30,6 +30,7 @@ void parseSecondLine (char *line, float *values) {
 
 }
 
+
 void parseThirdLine (char *line, int *indices) {
     char *token = strtok(line, ",");
     int index = 0;
