@@ -1,175 +1,138 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <stdint.h>
+#include <inttypes.h>
 
-void parseFirstLine (char *line, int *result_numbers) {
-    char *token = strtok(line, ",");
-    int index = 0;
+typedef struct {
+    uint64_t noRows;
+    uint64_t noCols;
+    uint64_t noNonZero;
+    float *values;
+    uint64_t *indices;
+} ELLPACKMatrix;
 
-    while (token != NULL) {
-        if (strcmp(token, "*") != 0) {
-            result_numbers[index++] = atoi(token);
-        }
-        token = strtok(NULL, ",");
+void read_matrix(const char *filename, ELLPACKMatrix *matrix) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        fprintf(stderr, "Error opening file %s\n", filename);
+        exit(EXIT_FAILURE);
     }
-}
 
-void parseSecondLine (char *line, float *values) {
-    char *token = strtok(line, ",");
-    int index = 0;
+    fscanf(file, "%" SCNu64 ",%" SCNu64 ",%" SCNu64, &matrix->noRows, &matrix->noCols, &matrix->noNonZero);
 
-    while (token != NULL) {
-        if (strcmp(token, "*") == 0) {
-            values[index++] = 0.0f;
+    matrix->values = (float *)malloc(matrix->noRows * matrix->noNonZero * sizeof(float));
+    matrix->indices = (uint64_t *)malloc(matrix->noRows * matrix->noNonZero * sizeof(uint64_t));
+
+    char ch;
+    for (uint64_t i = 0; i < matrix->noRows * matrix->noNonZero; ++i) {
+        if (fscanf(file, " %c", &ch) == 1 && ch == '*') {
+            matrix->values[i] = 0.0f;
+            // Skip the comma
+            fscanf(file, "%*c");
         } else {
-            values[index++] = atof(token);
+            ungetc(ch, file); // Put back the character if it's not '*'
+            fscanf(file, "%f,", &matrix->values[i]);
         }
-        token = strtok(NULL, ",");
     }
-
-}
-
-
-void parseThirdLine (char *line, int *indices) {
-    char *token = strtok(line, ",");
-    int index = 0;
-
-    while (token != NULL) {
-        if (strcmp(token, "*") == 0) {
-            indices[index++] = -1;
+    for (uint64_t i = 0; i < matrix->noRows * matrix->noNonZero; ++i) {
+        if (fscanf(file, " %c", &ch) == 1 && ch == '*') {
+            matrix->indices[i] = 0;
+            // Skip the comma
+            fscanf(file, "%*c");
         } else {
-            indices[index++] = atoi(token);
+            ungetc(ch, file); // Put back the character if it's not '*'
+            fscanf(file, "%" SCNu64 ",", &matrix->indices[i]);
         }
-        token = strtok(NULL, ",");
     }
 
+    fclose(file);
 }
 
-/*
-void parseNumbersOfMatrix (float *result, char *values_a, char *values_b, char *indices_a, char* indices_b, uint64_t *index1, uint64_t *index2, int *result_numbers_a, int *result_numbers_b) {
+void write_matrix(const char *filename, const ELLPACKMatrix *matrix) {
+    FILE *file = fopen(filename, "w");
+    if (!file) {
+        fprintf(stderr, "Error opening file %s\n", filename);
+        exit(EXIT_FAILURE);
+    }
 
-        for (int i = 0; i < result_numbers_a[2]; i++) {
+    fprintf(file, "%" PRIu64 ",%" PRIu64 ",%" PRIu64 "\n", matrix->noRows, matrix->noCols, matrix->noNonZero);
 
-            for (int k = 0; k < result_numbers_b[2]; k++) {
+    for (uint64_t i = 0; i < matrix->noRows * matrix->noNonZero; ++i) {
+        if (matrix->values[i] == 0.0f) {
+            fprintf(file, "%c", '*');
+        } else {
+            fprintf(file, "%.1f", matrix->values[i]);
+        }
+        if (i < matrix->noRows * matrix->noNonZero - 1) {
+            fprintf(file, ",");
+        }
+    }
+    fprintf(file, "\n");
 
-                 index_a = indices_a[index1*result_numbers[2]+i];
-                uint64_t index_b = indices_b[index2*result_numbers[2]+k];
+    for (uint64_t i = 0; i < matrix->noRows * matrix->noNonZero; ++i) {
+        fprintf(file, "%" PRIu64, matrix->indices[i]);
+        if (i < matrix->noRows * matrix->noNonZero - 1) {
+            fprintf(file, ",");
+        }
+    }
+    //fprintf(file, "\n");
 
-                if index_a
+    fclose(file);
+}
 
-                if (index_a == index_b) {
-                    result += values_a[result_numbers_a[2]*index1+index_a] * values_b[result_numbers_b[2]*index2+index_b]
-                }
+void matr_mult_ellpack(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMatrix *result) {
+    if (a->noCols != b->noRows) {
+        fprintf(stderr, "Matrix dimensions do not match for multiplication\n");
+        exit(EXIT_FAILURE);
+    }
+
+    result->noRows = a->noRows;
+    result->noCols = b->noCols;
+    result->noNonZero = b->noNonZero;
+
+    result->values = (float *)calloc(result->noRows * result->noNonZero, sizeof(float));
+    result->indices = (uint64_t *)calloc(result->noRows * result->noNonZero, sizeof(uint64_t));
+
+    for (uint64_t i = 0; i < a->noRows; ++i) {
+        for (uint64_t k = 0; k < a->noNonZero; ++k) {
+            uint64_t a_index = i * a->noNonZero + k;
+            float a_value = a->values[a_index];
+            uint64_t a_col = a->indices[a_index];
+
+            for (uint64_t l = 0; l < b->noNonZero; ++l) {
+                uint64_t b_index = a_col * b->noNonZero + l;
+                float b_value = b->values[b_index];
+                uint64_t b_col = b->indices[b_index];
+
+                result->values[i * result->noNonZero + l + k] += a_value * b_value;
+                result->indices[i * result->noNonZero + l + k] = b_col;
             }
         }
-
+    }
 }
-*/
-
-int main() {
-
-    // Implement all File Paths + open files in readmode
-    const char *filePath_input_a = "files/input_a.txt";
-    const char *filePath_input_b = "files/input_b.txt";
-    const char *filePath_output = "files/output.txt";
-
-    FILE *input_a = fopen(filePath_input_a, "r");
-    FILE *input_b = fopen(filePath_input_b, "r");
-    FILE *output = fopen(filePath_output, "w");
 
 
-    if (input_a == NULL) {
-        perror("Fehler beim Öffnen des Input A");
+
+int main(int argc, char **argv) {
+    if (argc != 4) {
+        fprintf(stderr, "Usage: %s <matrix_a_file> <matrix_b_file> <result_file>\n", argv[0]);
         return EXIT_FAILURE;
     }
 
-    if (input_b == NULL) {
-        perror("Fehler beim Öffnen des Input B");
-        return EXIT_FAILURE;
-    }
+    ELLPACKMatrix a, b, result;
+    read_matrix(argv[1], &a);
+    read_matrix(argv[2], &b);
 
+    matr_mult_ellpack(&a, &b, &result);
 
-    //save first lines form the input files
-    char line1_a[256];
-    char line1_b[256];
+    write_matrix(argv[3], &result);
 
-    fgets(line1_a, 256, input_a);
-    printf("line 1a: %s", line1_a);
-    fgets(line1_b, 256, input_b);
-    printf("line 1b: %s", line1_b);
+    free(a.values);
+    free(a.indices);
+    free(b.values);
+    free(b.indices);
+    free(result.values);
+    free(result.indices);
 
-
-    // parse first lines of inputs and safe the results in numbers_line1_a/b
-    int numbers_line1_a[3];
-    int numbers_line1_b[3];
-    parseFirstLine(line1_a, numbers_line1_a);
-    parseFirstLine(line1_b, numbers_line1_b);
-
-    for(int i = 0; i < 3; i++) {
-        printf("A: %d\n", numbers_line1_a[i]);
-        printf("B: %d\n", numbers_line1_b[i]);
-    }
-
-
-    //Überprüfung ob man die beiden Matrizen miteinander multiplizieren kann
-    if (numbers_line1_a[1] != numbers_line1_b[0]) {
-        perror("Die beiden Matrizen können nicht miteinander multipliziert werden ! Falsches Format");
-        return EXIT_FAILURE;
-    }
-
-
-    // Einlesen der Werte und Indices
-
-    char line2_a[256];
-    char line3_a[256];
-
-    char line2_b[256];
-    char line3_b[256];
-
-    fgets(line2_a, 256, input_a);
-    printf("line 2a: %s", line2_a);
-
-    fgets(line3_a, 256, input_a);
-    printf("line 3a: %s\n", line3_a);
-
-    fgets(line2_b, 256, input_b);
-    printf("line 2b: %s", line2_b);
-
-    fgets(line3_b, 256, input_b);
-    printf("line 3b: %s\n", line3_b);
-
-    float values_line2_a[numbers_line1_a[0]*numbers_line1_a[2]];
-    float values_line2_b[numbers_line1_b[0]*numbers_line1_b[2]];
-
-    uint64_t indices_line3_a[numbers_line1_a[0]*numbers_line1_a[2]];
-    uint64_t indices_line3_b[numbers_line1_b[0]*numbers_line1_b[2]];
-
-    parseSecondLine(line2_a, values_line2_a);
-    parseSecondLine(line2_b, values_line2_b);
-
-    for (int i = 0; i < 8; i++) {
-        printf("Float: %f\n", values_line2_a[i]);
-    }
-
-
-    //Lösungsmatrix erstellen + Berechnung
-    float result[numbers_line1_a[0]][numbers_line1_b[1]];
-
-    char line1_out[256];
-    char line2_out[256];
-    char line3_out[256];
-
- /*   for (int i = 0; i < numbers_line1_a[0], i++); {
-        for (int k = 0; k < numbers_line1_b[1], i++); {
-
-        }
-
-    }
-
-*/
-
-    fclose(input_a);
-    fclose(input_b);
-
+    return EXIT_SUCCESS;
 }
