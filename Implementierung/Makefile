@@ -7,7 +7,7 @@ SRC := main.c  # Setzt die Quelldatei, die kompiliert werden soll.
 
 # Zusätzliche Flags für den Compiler
 # Hier sollten Sie Ihre eigenen Flags hinzufügen
-CFLAGS := -Wall -Wextra # Beispiel: CFLAGS := -Wall -Wextra
+CFLAGS := -Wall -Wextra -Wpedantic # Beispiel: CFLAGS := -Wall -Wextra
 
 # ---------------------------------------
 # KONFIGURATION ENDE
