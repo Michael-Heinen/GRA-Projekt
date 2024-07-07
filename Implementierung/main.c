@@ -8,11 +8,11 @@
 
 typedef struct
 {
-    uint64_t noRows;
-    uint64_t noCols;
-    uint64_t noNonZero;
+    int64_t noRows;
+    int64_t noCols;
+    int64_t noNonZero;
     float *values;
-    uint64_t *indices;
+    int64_t *indices;
 } ELLPACKMatrix;
 
 void read_matrix(const char *filename, ELLPACKMatrix *matrix)
@@ -24,13 +24,13 @@ void read_matrix(const char *filename, ELLPACKMatrix *matrix)
         exit(EXIT_FAILURE);
     }
 
-    fscanf(file, "%" SCNu64 ",%" SCNu64 ",%" SCNu64, &matrix->noRows, &matrix->noCols, &matrix->noNonZero);
+    fscanf(file, "%" SCNd64 ",%" SCNd64 ",%" SCNd64, &matrix->noRows, &matrix->noCols, &matrix->noNonZero);
 
     matrix->values = (float *)malloc(matrix->noRows * matrix->noNonZero * sizeof(float));
-    matrix->indices = (uint64_t *)malloc(matrix->noRows * matrix->noNonZero * sizeof(uint64_t));
+    matrix->indices = (int64_t *)malloc(matrix->noRows * matrix->noNonZero * sizeof(int64_t));
 
     char ch;
-    for (uint64_t i = 0; i < matrix->noRows * matrix->noNonZero; ++i)
+    for (int64_t i = 0; i < matrix->noRows * matrix->noNonZero; ++i)
     {
         if (fscanf(file, " %c", &ch) == 1 && ch == '*')
         {
@@ -44,11 +44,11 @@ void read_matrix(const char *filename, ELLPACKMatrix *matrix)
             fscanf(file, "%f,", &matrix->values[i]);
         }
     }
-    for (uint64_t i = 0; i < matrix->noRows * matrix->noNonZero; ++i)
+    for (int64_t i = 0; i < matrix->noRows * matrix->noNonZero; ++i)
     {
         if (fscanf(file, " %c", &ch) == 1 && ch == '*')
         {
-            matrix->indices[i] = 0;
+            matrix->indices[i] = -1;
             // Skip the comma
             fscanf(file, "%*c");
         }
@@ -62,7 +62,7 @@ void read_matrix(const char *filename, ELLPACKMatrix *matrix)
     fclose(file);
 }
 
-void write_matrix(const char *filename, const ELLPACKMatrix *matrix)
+void write_matrix(const char *filename, const ELLPACKMatrix *matrix, int64_t new_noNonZero)
 {
     FILE *file = fopen(filename, "w");
     if (!file)
@@ -71,31 +71,44 @@ void write_matrix(const char *filename, const ELLPACKMatrix *matrix)
         exit(EXIT_FAILURE);
     }
 
-    fprintf(file, "%" PRIu64 ",%" PRIu64 ",%" PRIu64 "\n", matrix->noRows, matrix->noCols, matrix->noNonZero);
+    fprintf(file, "%" PRId64 ",%" PRId64 ",%" PRId64 "\n", matrix->noRows, matrix->noCols, new_noNonZero);
 
-    for (uint64_t i = 0; i < matrix->noRows * matrix->noNonZero; ++i)
+    for (int64_t i = 0; i < matrix->noRows; ++i)
     {
-        if (matrix->values[i] == 0.0f)
+        for (int64_t j = 0; j < new_noNonZero; j++)
         {
-            fprintf(file, "%c", '*');
-        }
-        else
-        {
-            fprintf(file, "%.1f", matrix->values[i]);
-        }
-        if (i < matrix->noRows * matrix->noNonZero - 1)
-        {
-            fprintf(file, ",");
+            if (matrix->values[i * matrix->noNonZero + j] == 0.0f)
+            {
+                fprintf(file, "%c", '*');
+            }
+            else
+            {
+                fprintf(file, "%.1f", matrix->values[i * matrix->noNonZero + j]);
+            }
+            if (i * matrix->noNonZero + j < matrix->noRows * matrix->noNonZero - 1)
+            {
+                fprintf(file, ",");
+            }
         }
     }
     fprintf(file, "\n");
 
-    for (uint64_t i = 0; i < matrix->noRows * matrix->noNonZero; ++i)
+    for (int64_t i = 0; i < matrix->noRows; ++i)
     {
-        fprintf(file, "%" PRIu64, matrix->indices[i]);
-        if (i < matrix->noRows * matrix->noNonZero - 1)
+        for (int64_t j = 0; j < new_noNonZero; j++)
         {
-            fprintf(file, ",");
+            if (matrix->indices[i * matrix->noNonZero + j] < 0)
+            {
+                fprintf(file, "%c", '*');
+            }
+            else
+            {
+                fprintf(file, "%" PRId64, matrix->indices[i * matrix->noNonZero + j]);
+            }
+            if (i * matrix->noNonZero + j < matrix->noRows * matrix->noNonZero - 1)
+            {
+                fprintf(file, ",");
+            }
         }
     }
     // fprintf(file, "\n");
@@ -113,30 +126,74 @@ void matr_mult_ellpack(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMa
 
     result->noRows = a->noRows;
     result->noCols = b->noCols;
-    result->noNonZero = b->noNonZero;
+    result->noNonZero = b->noCols;
 
     result->values = (float *)calloc(result->noRows * result->noNonZero, sizeof(float));
-    result->indices = (uint64_t *)calloc(result->noRows * result->noNonZero, sizeof(uint64_t));
+    result->indices = (int64_t *)calloc(result->noRows * result->noNonZero, sizeof(int64_t));
 
-    for (uint64_t i = 0; i < a->noRows; ++i)
+    int64_t arr_len = result->noRows * result->noNonZero;
+    for (int64_t i = 0; i < arr_len; i++)
     {
-        for (uint64_t k = 0; k < a->noNonZero; ++k)
+        result->indices[i] = -1;
+    }
+
+    for (int64_t i = 0; i < a->noRows; ++i)
+    {
+        for (int64_t k = 0; k < a->noNonZero; ++k)
         {
-            uint64_t a_index = i * a->noNonZero + k;
+            int64_t a_index = i * a->noNonZero + k;
             float a_value = a->values[a_index];
-            uint64_t a_col = a->indices[a_index];
-
-            for (uint64_t l = 0; l < b->noNonZero; ++l)
+            if (a_value == 0.0)
             {
-                uint64_t b_index = a_col * b->noNonZero + l;
-                float b_value = b->values[b_index];
-                uint64_t b_col = b->indices[b_index];
+                continue;
+            }
+            int64_t a_col = a->indices[a_index];
 
-                result->values[i * result->noNonZero + l + k] += a_value * b_value;
-                result->indices[i * result->noNonZero + l + k] = b_col;
+            for (int64_t l = 0; l < b->noNonZero; ++l)
+            {
+                int64_t b_index = a_col * b->noNonZero + l;
+                float b_value = b->values[b_index];
+                int64_t b_col = b->indices[b_index];
+                if (b_col <= -1)
+                {
+                    continue;
+                }
+
+                for (int64_t m = 0; i < result->noNonZero; m++)
+                {
+                    if (result->indices[i * result->noNonZero + m] < 0 || result->indices[i * result->noNonZero + m] == b_col)
+                    {
+                        result->values[i * result->noNonZero + m] += a_value * b_value;
+                        result->indices[i * result->noNonZero + m] = b_col;
+                        break;
+                    }
+                }
             }
         }
     }
+}
+
+// compute noNonZero in result matrix
+int compute_noNonZero(ELLPACKMatrix *matrix)
+{
+    int64_t maxNoNonZero = 0;
+    for (int64_t i = 0; i < matrix->noCols; i++)
+    {
+        int64_t tmpNoNonZero = 0;
+        for (int64_t j = 0; j < matrix->noNonZero; j++)
+        {
+            if (matrix->indices[i * matrix->noNonZero + j] < 0)
+            {
+                break;
+            }
+            tmpNoNonZero++;
+        }
+        if (tmpNoNonZero > maxNoNonZero)
+        {
+            maxNoNonZero = tmpNoNonZero;
+        }
+    }
+    return maxNoNonZero;
 }
 
 const char *usage_msg =
@@ -223,7 +280,9 @@ int main(int argc, char **argv)
 
     matr_mult_ellpack(&matrix_a, &matrix_b, &result);
 
-    write_matrix(output_file, &result);
+    int64_t new_noNonZero = compute_noNonZero(&result);
+
+    write_matrix(argv[3], &result, new_noNonZero);
 
     free(matrix_a.values);
     free(matrix_a.indices);
