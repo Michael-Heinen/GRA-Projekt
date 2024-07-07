@@ -52,5 +52,5 @@ Mkfile.old
 dkms.conf
 
 //own project compilation
-main
+Implementierung/main
 Implementierung/files/*
