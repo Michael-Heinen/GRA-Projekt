@@ -1,42 +1,70 @@
-# ---------------------------------------
-# KONFIGURATION BEGINN
-# ---------------------------------------
+CC = gcc
+CFLAGS = -Wall -Wextra -std=c99
 
-# Einstiegspunkt für das Programm und Zielname
-SRC := main.c  # Setzt die Quelldatei, die kompiliert werden soll.
+<<<<<<< HEAD
+TARGET_MAIN = main
+TARGET_VERSION_1 = main_v1
+TARGET_VERSION_2 = main_v2
 
-# Zusätzliche Flags für den Compiler
-# Hier sollten Sie Ihre eigenen Flags hinzufügen
-CFLAGS := -Wall -Wextra -Wpedantic # Beispiel: CFLAGS := -Wall -Wextra
+all: $(TARGET_MAIN) $(TARGET_VERSION_1) $(TARGET_VERSION_2)
+=======
+# Source and include directories
+SRC_DIR = src
+INCLUDE_DIR = include
 
-# ---------------------------------------
-# KONFIGURATION ENDE
-# ---------------------------------------
+# Source files
+SOURCES = $(SRC_DIR)/main.c $(SRC_DIR)/matrix_io.c $(SRC_DIR)/matr_mult.c $(SRC_DIR)/matr_mult_V1.c $(SRC_DIR)/matr_mult_V2.c
 
-# Bestimmt, ob clang oder gcc verfügbar ist
+# Compiler and flags
 CC := $(shell command -v gcc || command -v clang)
+CFLAGS := -Wall -Wextra -Wpedantic -std=c99 -I$(INCLUDE_DIR)
+
+# Target executable
+TARGET = main
+>>>>>>> b2b9891 (modular project structure implementation)
+
+$(TARGET_MAIN): main.c
+	$(CC) $(CFLAGS) -o $(TARGET_MAIN) main.c
+
+<<<<<<< HEAD
+$(TARGET_VERSION_1): main.c
+	$(CC) $(CFLAGS) -DVERSION=1 -o $(TARGET_VERSION_1) main.c
+
+$(TARGET_VERSION_2): main.c
+	$(CC) $(CFLAGS) -DVERSION=2 -o $(TARGET_VERSION_2) main.c
+
+clean:
+	rm -f $(TARGET_MAIN) $(TARGET_VERSION_1) $(TARGET_VERSION_2)
+
+run: $(TARGET_MAIN)
+	./$(TARGET_MAIN) -a input_a.txt -b input_b.txt -o output.txt
+
+help:
+	./$(TARGET_MAIN) --help
+=======
+# Check if compiler is available
 ifeq ($(strip $(CC)),)
     $(error Weder clang noch gcc ist verfügbar. Beenden.)
 endif
 
+# Default target
+all: release
 
-# Standardmäßig auf Release-Build für App und Bibliothek
-all: debug
+# Debug build
+debug: CFLAGS += -g
+debug: $(TARGET)
 
-# Debug-Build
-debug: CFLAGS += -g # Hinzufügen des Debugging-Flags, ermöglicht das Debuggen des Programms
-debug: main
+# Release build
+release: CFLAGS += -O2
+release: $(TARGET)
 
-# Release-Build
-release: CFLAGS += -O2 # Hinzufügen der Optimierungsflags für eine schnellere Ausführung des Programms
-release: main
+# Recipe to build the target
+$(TARGET):
+	$(CC) $(CFLAGS) -o $@ $(SOURCES)
 
-# Rezept zum Bauen des Programms
-main: $(SRC)  # Definiert 'main' als Ziel, das von den Dateien in $(SRC) abhängt
-	$(CC) $(CFLAGS) -o main $(SRC) # Führt den Compiler $(CC) mit den Flags $(CFLAGS) aus, um die Quelldatei $(SRC) zu kompilieren und das Ergebnis in der Datei 'main' zu speichern.
-
-# Bereinigung
+# Clean up
 clean:
-	rm -f main # Entfernt die erzeugte Ausführungsdatei 'main', um das Projektverzeichnis aufzuräumen.
+	rm -f $(TARGET)
 
 .PHONY: all debug release clean
+>>>>>>> b2b9891 (modular project structure implementation)
