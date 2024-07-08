@@ -54,3 +54,7 @@ dkms.conf
 //own project compilation
 Implementierung/main
 Implementierung/files/*
+
+.vscode
+.idea
+.venv
