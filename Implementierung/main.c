@@ -84,7 +84,6 @@ void write_matrix(const char *filename, const ELLPACKMatrix *matrix, uint64_t ne
             }
         }    
     }
-    //fprintf(file, "\n");
 
     fclose(file);
 }
@@ -103,12 +102,6 @@ void matr_mult_ellpack(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMa
     result->indices = (uint64_t *)calloc(result->noRows * result->noNonZero, sizeof(uint64_t));
 
 
-    /*int64_t arr_len = result->noRows * result->noNonZero;
-    for (int64_t i = 0; i < arr_len; i++) {
-        result->indices[i] = -1;
-    }*/
-
-
     for (uint64_t i = 0; i < a->noRows; ++i) {
         for (uint64_t k = 0; k < a->noNonZero; ++k) {
             uint64_t a_index = i * a->noNonZero + k;
@@ -125,9 +118,7 @@ void matr_mult_ellpack(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMa
                     continue;
                 }
                 uint64_t b_col = b->indices[b_index];
-                /*if (b_col <= -1) {
-                    continue;
-                }*/
+                
 
                 for (uint64_t m = 0; i < result->noNonZero; m++) {
                     if (result->indices[i * result->noNonZero + m] == 0 && result->values[i * result->noNonZero + m] == 0.0) {
