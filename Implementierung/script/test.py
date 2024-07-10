@@ -74,6 +74,13 @@ def delete_files_in_directory():
     except OSError:
         print("Error occurred while deleting files.")
 
+# Function to parse execution time from the C program output
+def parse_execution_time(output):
+    for line in output.splitlines():
+        if "Execution time:" in line:
+            return float(line.split(":")[1].strip().split()[0])
+    return None
+
 # Function to generate test matrices
 def generate_test_matrices():
     delete_files_in_directory()
@@ -122,14 +129,19 @@ def run_tests():
             execution_times = []
             
             for i in range(3):  # Run each test three times
-                start_time = time.time()
+                # start_time = time.time()
                 try:
                     command = [f"./main", f"-V {impl}", "-B", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-ofiles/result_V{impl}_{size}.txt"]
                     returncode, stdout, stderr = run_isolated_test(command)
-                    elapsed_time = time.time() - start_time
+                    # elapsed_time = time.time() - start_time
                     if returncode == 0:
-                        print(f"Run {i+1} Execution Time: {elapsed_time:.6f} seconds")
-                        execution_times.append(elapsed_time)
+                        execution_time = parse_execution_time(stdout.decode())
+                        if execution_time is not None:
+                            execution_times.append(execution_time)
+                            print(f"Run {i+1} Execution Time: {execution_time} seconds")
+                            # print(f"Execution time: {execution_time} seconds")
+                        else:
+                            print("Failed to parse execution time from the output.")
                     else:
                         print(f"Run {i+1} Error: {stderr.decode().strip()}")
                 except Exception as e:
@@ -200,7 +212,7 @@ def plot_performance_results(performance_results):
 
 if __name__ == "__main__":
     # Compile the implementations
-    # compile_implementations()
+    compile_implementations()
 
     # Generate test matrices if needed
     generate_test_matrices()

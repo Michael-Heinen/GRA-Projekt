@@ -4,7 +4,6 @@
 #include <stdbool.h>
 #include <linux/time.h>
 
-
 #include "ellpack.h"
 #include "matrix_io.h"
 
@@ -26,13 +25,13 @@ const char *help_msg =
 
 void print_usage(const char *progname)
 {
-    fprintf(stderr, usage_msg, progname, progname, progname);
+    fprintf(stdout, usage_msg, progname, progname, progname);
 }
 
 void print_help(const char *progname)
 {
     print_usage(progname);
-    fprintf(stderr, "\n%s", help_msg);
+    fprintf(stdout, "\n%s", help_msg);
 }
 
 int main(int argc, char **argv)
@@ -90,7 +89,7 @@ int main(int argc, char **argv)
     read_matrix(input_file_a, &matrix_a);
     read_matrix(input_file_b, &matrix_b);
 
-    //start clock
+    // start clock
     struct timespec start;
     clock_gettime(CLOCK_MONOTONIC, &start);
 
@@ -110,12 +109,16 @@ int main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    //stop clock
+    // stop clock
     struct timespec end;
     clock_gettime(CLOCK_MONOTONIC, &end);
 
-
     double time = end.tv_sec - start.tv_sec + 1e-9 * (end.tv_nsec - start.tv_nsec);
+
+    if (benchmark)
+    {
+        printf("Execution time: %f seconds\n", time);
+    }
 
     uint64_t new_noNonZero = compute_noNonZero(&result);
 
