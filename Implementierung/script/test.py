@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Constants
-IMPLEMENTATIONS = [0]
+IMPLEMENTATIONS = [0, 1, 2]
 MATRIX_SIZES = [2, 4, 8, 16]
 DENSITY = 0.8  # 50% density of non-zero elements
 EDGE_CASES = [
@@ -124,7 +124,7 @@ def run_tests():
             for i in range(3):  # Run each test three times
                 start_time = time.time()
                 try:
-                    command = [f"./main", f"-V {impl}", "-B", f"-a {matrix_a_filename}", f"-b {matrix_b_filename}", f"-o files/result_V{impl}_{size}.txt"]
+                    command = [f"./main", f"-V {impl}", "-B", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-ofiles/result_V{impl}_{size}.txt"]
                     returncode, stdout, stderr = run_isolated_test(command)
                     elapsed_time = time.time() - start_time
                     if returncode == 0:
@@ -165,7 +165,7 @@ def run_edge_case_tests():
             # Measure execution time
             start_time = time.time()
             try:
-                command = [f"./main", f"-V {impl}", "-B", f"-a {matrix_a_filename}", f"-b {matrix_b_filename}", f"-o files/result_{impl}_{case_name}.txt"]
+                command = [f"./main", f"-V{impl}", "-B", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-ofiles/result_{impl}_{case_name}.txt"]
                 returncode, stdout, stderr = run_isolated_test(command)
                 elapsed_time = time.time() - start_time
                 if returncode == 0:
@@ -196,7 +196,7 @@ def plot_performance_results(performance_results):
     plt.legend()
     plt.grid(True)
     plt.savefig('performance_comparison.png')
-    plt.show()
+    # plt.show()
 
 if __name__ == "__main__":
     # Compile the implementations
