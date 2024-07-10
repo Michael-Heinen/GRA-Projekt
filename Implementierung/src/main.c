@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <linux/time.h>
 
+
 #include "ellpack.h"
 #include "matrix_io.h"
 
@@ -116,7 +117,7 @@ int main(int argc, char **argv)
 
     double time = end.tv_sec - start.tv_sec + 1e-9 * (end.tv_nsec - start.tv_nsec);
 
-    int64_t new_noNonZero = compute_noNonZero(&result);
+    uint64_t new_noNonZero = compute_noNonZero(&result);
 
     write_matrix(output_file, &result, new_noNonZero);
 
