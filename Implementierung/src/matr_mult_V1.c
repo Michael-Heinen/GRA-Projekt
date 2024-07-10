@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void matr_mult_ellpack(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMatrix *result)
+void matr_mult_ellpack_V1(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMatrix *result)
 {
     if (a->noCols != b->noRows)
     {
@@ -56,7 +56,7 @@ void matr_mult_ellpack(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMa
 }
 
 // compute noNonZero in result matrix
-int compute_noNonZero(ELLPACKMatrix *matrix)
+int compute_noNonZero_V1(ELLPACKMatrix *matrix)
 {
     uint64_t maxNoNonZero = 0;
     for (uint64_t i = 0; i < matrix->noCols; i++)
