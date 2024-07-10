@@ -1,26 +1,35 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99
+CFLAGS = -Wall -Wextra -std=c99 -I$(INC_DIR)
 
-TARGET_MAIN = main
-TARGET_VERSION_1 = main_v1
-TARGET_VERSION_2 = main_v2
+BUILD_DIR = obj
+SRC_DIR = src
+INC_DIR = include
 
-all: $(TARGET_MAIN) $(TARGET_VERSION_1) $(TARGET_VERSION_2)
+SRCS = $(wildcard $(SRC_DIR)/*.c)
+OBJS = $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(SRCS))
 
-$(TARGET_MAIN): main.c
-	$(CC) $(CFLAGS) -o $(TARGET_MAIN) main.c
+TARGET = main
 
-$(TARGET_VERSION_1): main.c
-	$(CC) $(CFLAGS) -DVERSION=1 -o $(TARGET_VERSION_1) main.c
 
-$(TARGET_VERSION_2): main.c
-	$(CC) $(CFLAGS) -DVERSION=2 -o $(TARGET_VERSION_2) main.c
+all: $(TARGET)
+
+#Bulid executable -> all object files
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) -o $(TARGET)
+
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
 
 clean:
-	rm -f $(TARGET_MAIN) $(TARGET_VERSION_1) $(TARGET_VERSION_2)
+	rm -rf $(BUILD_DIR) $(TARGET)
 
-run: $(TARGET_MAIN)
-	./$(TARGET_MAIN) -a input_a.txt -b input_b.txt -o output.txt
+run: $(TARGET)
+	./$(TARGET) -a input_a.txt -b input_b.txt -o output.txt
 
 help:
-	./$(TARGET_MAIN) --help
+	./$(TARGET) --help
+
+.PHONY: all clean run help
