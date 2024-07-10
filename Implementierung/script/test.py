@@ -5,9 +5,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Constants
-IMPLEMENTATIONS = ["V0", "V1", "V2"]
+IMPLEMENTATIONS = [0]
 MATRIX_SIZES = [2, 4, 8, 16]
-DENSITY = 0.5  # 50% density of non-zero elements
+DENSITY = 0.8  # 50% density of non-zero elements
 EDGE_CASES = [
     ("empty_matrix", (0, 0)),  # Empty matrix
     ("single_element", (1, 1)),  # Single element matrix
@@ -28,16 +28,23 @@ def generate_matrix(rows, cols, density=0.5):
 
 # Function to save matrix to file
 def save_matrix_to_file(matrix, filename):
+    print("Filename: "+ filename)
+    print(matrix)
     rows, cols = matrix.shape
     max_nonzeros = int(np.count_nonzero(matrix, axis=1).max())
     with open(filename, 'w') as f:
         f.write(f"{rows},{cols},{max_nonzeros}\n")
+        row_lines = []
         for row in matrix:
             row_values = [str(v) if v != 0 else "*" for v in row]
-            f.write(",".join(row_values) + "\n")
+            row_lines.append(",".join(row_values))
+        f.write(",".join(row_lines) + "\n")
+    
+        index_lines = []
         for row in matrix:
             row_indices = [str(idx) if row[idx] != 0 else "*" for idx in range(cols)]
-            f.write(",".join(row_indices) + "\n")
+            index_lines.append(",".join(row_indices))
+        f.write(",".join(index_lines) + "\n")
 
 # Function to compare matrices
 def compare_matrices(file1, file2):
@@ -56,8 +63,22 @@ def compile_implementations():
     except subprocess.CalledProcessError as e:
         print(e.output)
 
+# Deleting test files for regenerating them
+def delete_files_in_directory():
+    directory_path = "files/"
+    try:
+        files = os.listdir(directory_path)
+        for file in files:
+            file_path = os.path.join(directory_path, file)
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+        print("All files deleted successfully.")
+    except OSError:
+        print("Error occurred while deleting files.")
+
 # Function to generate test matrices
 def generate_test_matrices():
+    delete_files_in_directory()
     for size in MATRIX_SIZES:
         matrix_a_filename = f"files/matrixA_{size}.txt"
         matrix_b_filename = f"files/matrixB_{size}.txt"
@@ -105,7 +126,7 @@ def run_tests():
             for i in range(3):  # Run each test three times
                 start_time = time.time()
                 try:
-                    command = [f"./main", f"-V{impl[-1]}", "-B", matrix_a_filename, matrix_b_filename, f"files/result_{impl}_{size}.txt"]
+                    command = [f"./main", f"-V {impl[i]}", "-B", f"-a {matrix_a_filename}", f"-b {matrix_b_filename}", f"-o files/result_V{impl[i]}_{size}.txt"]
                     returncode, stdout, stderr = run_isolated_test(command)
                     elapsed_time = time.time() - start_time
                     if returncode == 0:
@@ -123,7 +144,7 @@ def run_tests():
                 
                 # Check correctness
                 expected_file = f"files/expected_result_{size}.txt"
-                command = ["./main", "-V0", matrix_a_filename, matrix_b_filename, expected_file]
+                command = ["./main", "-V 0", matrix_a_filename, matrix_b_filename, expected_file]
                 returncode, stdout, stderr = run_isolated_test(command)
                 if returncode == 0 and compare_matrices(f"files/result_{impl}_{size}.txt", expected_file):
                     print(f"Output correctness: PASSED")
@@ -146,7 +167,7 @@ def run_edge_case_tests():
             # Measure execution time
             start_time = time.time()
             try:
-                command = [f"./main", f"-V{impl[-1]}", "-B", matrix_a_filename, matrix_b_filename, f"files/result_{impl}_{case_name}.txt"]
+                command = [f"./main", f"-V {impl[i]}", "-B", f"-a {matrix_a_filename}", f"-b {matrix_b_filename}", f"-o files/result_{impl}_{case_name}.txt"]
                 returncode, stdout, stderr = run_isolated_test(command)
                 elapsed_time = time.time() - start_time
                 if returncode == 0:
@@ -156,7 +177,7 @@ def run_edge_case_tests():
                 
                 # Check correctness
                 expected_file = f"files/expected_result_{case_name}.txt"
-                command = ["./main", "-V0", matrix_a_filename, matrix_b_filename, expected_file]
+                command = ["./main", "-V 0", matrix_a_filename, matrix_b_filename, expected_file]
                 returncode, stdout, stderr = run_isolated_test(command)
                 if returncode == 0 and compare_matrices(f"files/result_{impl}_{case_name}.txt", expected_file):
                     print(f"Output correctness: PASSED")
@@ -181,14 +202,14 @@ def plot_performance_results(performance_results):
 
 if __name__ == "__main__":
     # Compile the implementations
-    compile_implementations()
-    
+    # compile_implementations()
+
     # Generate test matrices if needed
     generate_test_matrices()
-    generate_edge_case_matrices()
+    # generate_edge_case_matrices()
     
     # Run matrix tests
     run_tests()
     
     # Run edge case tests
-    run_edge_case_tests()
+    # run_edge_case_tests()
