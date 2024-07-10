@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <stdbool.h>
+#include <linux/time.h>
 
 #include "ellpack.h"
 #include "matrix_io.h"
@@ -88,6 +89,10 @@ int main(int argc, char **argv)
     read_matrix(input_file_a, &matrix_a);
     read_matrix(input_file_b, &matrix_b);
 
+    //start clock
+    struct timespec start;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+
     switch (version)
     {
     case 0:
@@ -103,6 +108,13 @@ int main(int argc, char **argv)
         fprintf(stderr, "Unknown version specified.\n");
         exit(EXIT_FAILURE);
     }
+
+    //stop clock
+    struct timespec end;
+    clock_gettime(CLOCK_MONOTONIC, &end);
+
+
+    double time = end.tv_sec - start.tv_sec + 1e-9 * (end.tv_nsec - start.tv_nsec);
 
     int64_t new_noNonZero = compute_noNonZero(&result);
 
