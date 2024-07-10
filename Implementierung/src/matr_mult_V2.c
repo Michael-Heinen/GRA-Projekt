@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void matr_mult_ellpack_V2(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMatrix *result)
+void matr_mult_ellpack(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMatrix *result)
 {
     if (a->noCols != b->noRows)
     {
@@ -15,39 +15,35 @@ void matr_mult_ellpack_V2(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPAC
     result->noNonZero = b->noCols;
 
     result->values = (float *)calloc(result->noRows * result->noNonZero, sizeof(float));
-    result->indices = (int64_t *)calloc(result->noRows * result->noNonZero, sizeof(int64_t));
+    result->indices = (uint64_t *)calloc(result->noRows * result->noNonZero, sizeof(uint64_t));
 
-    int64_t arr_len = result->noRows * result->noNonZero;
-    for (int64_t i = 0; i < arr_len; i++)
-    {
-        result->indices[i] = -1;
-    }
 
-    for (int64_t i = 0; i < a->noRows; ++i)
+    for (uint64_t i = 0; i < a->noRows; ++i)
     {
-        for (int64_t k = 0; k < a->noNonZero; ++k)
+        for (uint64_t k = 0; k < a->noNonZero; ++k)
         {
-            int64_t a_index = i * a->noNonZero + k;
+            uint64_t a_index = i * a->noNonZero + k;
             float a_value = a->values[a_index];
             if (a_value == 0.0)
             {
                 continue;
             }
-            int64_t a_col = a->indices[a_index];
+            uint64_t a_col = a->indices[a_index];
 
-            for (int64_t l = 0; l < b->noNonZero; ++l)
+            for (uint64_t l = 0; l < b->noNonZero; ++l)
             {
-                int64_t b_index = a_col * b->noNonZero + l;
+                uint64_t b_index = a_col * b->noNonZero + l;
                 float b_value = b->values[b_index];
-                int64_t b_col = b->indices[b_index];
-                if (b_col <= -1)
+                if (b_value == 0.0f)
                 {
                     continue;
                 }
+                uint64_t b_col = b->indices[b_index];
 
-                for (int64_t m = 0; i < result->noNonZero; m++)
+
+                for (uint64_t m = 0; i < result->noNonZero; m++)
                 {
-                    if (result->indices[i * result->noNonZero + m] < 0 || result->indices[i * result->noNonZero + m] == b_col)
+                    if (result->indices[i * result->noNonZero + m] == 0 && result->values[i * result->noNonZero + m] == 0.0f)
                     {
                         result->values[i * result->noNonZero + m] += a_value * b_value;
                         result->indices[i * result->noNonZero + m] = b_col;
@@ -57,4 +53,27 @@ void matr_mult_ellpack_V2(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPAC
             }
         }
     }
+}
+
+// compute noNonZero in result matrix
+int compute_noNonZero(ELLPACKMatrix *matrix)
+{
+    uint64_t maxNoNonZero = 0;
+    for (uint64_t i = 0; i < matrix->noCols; i++)
+    {
+        uint64_t tmpNoNonZero = 0;
+        for (uint64_t j = 0; j < matrix->noNonZero; j++)
+        {
+            if (matrix->values[i * matrix->noNonZero + j] == 0.0f)
+            {
+                break;
+            }
+            tmpNoNonZero++;
+        }
+        if (tmpNoNonZero > maxNoNonZero)
+        {
+            maxNoNonZero = tmpNoNonZero;
+        }
+    }
+    return maxNoNonZero;
 }
