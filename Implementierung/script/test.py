@@ -28,8 +28,6 @@ def generate_matrix(rows, cols, density=0.5):
 
 # Function to save matrix to file
 def save_matrix_to_file(matrix, filename):
-    print("Filename: "+ filename)
-    print(matrix)
     rows, cols = matrix.shape
     max_nonzeros = int(np.count_nonzero(matrix, axis=1).max())
     with open(filename, 'w') as f:
@@ -126,7 +124,7 @@ def run_tests():
             for i in range(3):  # Run each test three times
                 start_time = time.time()
                 try:
-                    command = [f"./main", f"-V {impl[i]}", "-B", f"-a {matrix_a_filename}", f"-b {matrix_b_filename}", f"-o files/result_V{impl[i]}_{size}.txt"]
+                    command = [f"./main", f"-V {impl}", "-B", f"-a {matrix_a_filename}", f"-b {matrix_b_filename}", f"-o files/result_V{impl}_{size}.txt"]
                     returncode, stdout, stderr = run_isolated_test(command)
                     elapsed_time = time.time() - start_time
                     if returncode == 0:
@@ -167,7 +165,7 @@ def run_edge_case_tests():
             # Measure execution time
             start_time = time.time()
             try:
-                command = [f"./main", f"-V {impl[i]}", "-B", f"-a {matrix_a_filename}", f"-b {matrix_b_filename}", f"-o files/result_{impl}_{case_name}.txt"]
+                command = [f"./main", f"-V {impl}", "-B", f"-a {matrix_a_filename}", f"-b {matrix_b_filename}", f"-o files/result_{impl}_{case_name}.txt"]
                 returncode, stdout, stderr = run_isolated_test(command)
                 elapsed_time = time.time() - start_time
                 if returncode == 0:
