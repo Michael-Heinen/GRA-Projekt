@@ -1,70 +1,35 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99
+CFLAGS = -Wall -Wextra -std=c99 -I$(INC_DIR)
 
-<<<<<<< HEAD
-TARGET_MAIN = main
-TARGET_VERSION_1 = main_v1
-TARGET_VERSION_2 = main_v2
-
-all: $(TARGET_MAIN) $(TARGET_VERSION_1) $(TARGET_VERSION_2)
-=======
-# Source and include directories
+BUILD_DIR = obj
 SRC_DIR = src
-INCLUDE_DIR = include
+INC_DIR = include
 
-# Source files
-SOURCES = $(SRC_DIR)/main.c $(SRC_DIR)/matrix_io.c $(SRC_DIR)/matr_mult.c $(SRC_DIR)/matr_mult_V1.c $(SRC_DIR)/matr_mult_V2.c
+SRCS = $(wildcard $(SRC_DIR)/*.c)
+OBJS = $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(SRCS))
 
-# Compiler and flags
-CC := $(shell command -v gcc || command -v clang)
-CFLAGS := -Wall -Wextra -Wpedantic -std=c99 -I$(INCLUDE_DIR)
-
-# Target executable
 TARGET = main
->>>>>>> b2b9891 (modular project structure implementation)
 
-$(TARGET_MAIN): main.c
-	$(CC) $(CFLAGS) -o $(TARGET_MAIN) main.c
 
-<<<<<<< HEAD
-$(TARGET_VERSION_1): main.c
-	$(CC) $(CFLAGS) -DVERSION=1 -o $(TARGET_VERSION_1) main.c
+all: $(TARGET)
 
-$(TARGET_VERSION_2): main.c
-	$(CC) $(CFLAGS) -DVERSION=2 -o $(TARGET_VERSION_2) main.c
+#Bulid executable -> all object files
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) -o $(TARGET)
+
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
 
 clean:
-	rm -f $(TARGET_MAIN) $(TARGET_VERSION_1) $(TARGET_VERSION_2)
+	rm -rf $(BUILD_DIR) $(TARGET)
 
-run: $(TARGET_MAIN)
-	./$(TARGET_MAIN) -a input_a.txt -b input_b.txt -o output.txt
+run: $(TARGET)
+	./$(TARGET) -a input_a.txt -b input_b.txt -o output.txt
 
 help:
-	./$(TARGET_MAIN) --help
-=======
-# Check if compiler is available
-ifeq ($(strip $(CC)),)
-    $(error Weder clang noch gcc ist verfügbar. Beenden.)
-endif
+	./$(TARGET) --help
 
-# Default target
-all: release
-
-# Debug build
-debug: CFLAGS += -g
-debug: $(TARGET)
-
-# Release build
-release: CFLAGS += -O2
-release: $(TARGET)
-
-# Recipe to build the target
-$(TARGET):
-	$(CC) $(CFLAGS) -o $@ $(SOURCES)
-
-# Clean up
-clean:
-	rm -f $(TARGET)
-
-.PHONY: all debug release clean
->>>>>>> b2b9891 (modular project structure implementation)
+.PHONY: all clean run help
