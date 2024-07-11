@@ -55,6 +55,8 @@ dkms.conf
 Implementierung/main
 Implementierung/files/*
 
+Implementierung/script/*.png
+
 .vscode
 .idea
 .venv

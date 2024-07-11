@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Constants
-IMPLEMENTATIONS = [0, 1, 2]
+IMPLEMENTATIONS = [0]
 MATRIX_SIZES = [2, 4, 8, 16]
 DENSITY = 0.8  # 50% density of non-zero elements
 EDGE_CASES = [
@@ -29,7 +29,14 @@ def generate_matrix(rows, cols, density=0.5):
 # Function to save matrix to file
 def save_matrix_to_file(matrix, filename):
     rows, cols = matrix.shape
-    max_nonzeros = int(np.count_nonzero(matrix, axis=1).max())
+    print(matrix)
+    try:
+        max_nonzeros = int(np.count_nonzero(matrix, axis=1).max())
+    # empty matrix edge case 
+    except ValueError:
+        max_nonzeros = 0
+        
+
     with open(filename, 'w') as f:
         f.write(f"{rows},{cols},{max_nonzeros}\n")
         row_lines = []
@@ -200,14 +207,22 @@ def run_edge_case_tests():
 def plot_performance_results(performance_results):
     plt.figure(figsize=(12, 8))
     for impl in IMPLEMENTATIONS:
-        plt.plot(MATRIX_SIZES, performance_results[impl], marker='o', label=impl)
+        # Filter out None values for plotting
+        sizes = []
+        times = []
+        for size, time in zip(MATRIX_SIZES, performance_results[impl]):
+            if time is not None:
+                sizes.append(size)
+                times.append(time)
+        if sizes and times:  # Ensure there's data to plot
+            plt.plot(sizes, times, marker='o', label=impl)
     
     plt.xlabel('Matrix Size (NxN)')
     plt.ylabel('Average Execution Time (seconds)')
     plt.title('Performance Comparison of Matrix Multiplication Implementations')
     plt.legend()
     plt.grid(True)
-    plt.savefig('performance_comparison.png')
+    plt.savefig('script/performance_comparison.png')
     # plt.show()
 
 if __name__ == "__main__":
@@ -216,10 +231,10 @@ if __name__ == "__main__":
 
     # Generate test matrices if needed
     generate_test_matrices()
-    # generate_edge_case_matrices()
+    generate_edge_case_matrices()
     
     # Run matrix tests
     run_tests()
     
     # Run edge case tests
-    # run_edge_case_tests()
+    run_edge_case_tests()
