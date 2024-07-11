@@ -6,6 +6,7 @@
 
 #include "ellpack.h"
 #include "matrix_io.h"
+#include <unistd.h> // sleep
 
 const char *usage_msg =
     "Help Message (Usage): "
@@ -92,6 +93,8 @@ int main(int argc, char **argv)
     // start clock
     struct timespec start;
     clock_gettime(CLOCK_MONOTONIC, &start);
+    // ensure one second between time measurement
+    sleep(1);
 
     switch (version)
     {
@@ -117,7 +120,7 @@ int main(int argc, char **argv)
 
     if (benchmark)
     {
-        printf("Execution time: %f seconds\n", time);
+        fprintf(stdout, "Execution time: %f seconds\n", time);
     }
 
     uint64_t new_noNonZero = compute_noNonZero(&result);

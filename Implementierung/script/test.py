@@ -29,7 +29,6 @@ def generate_matrix(rows, cols, density=0.5):
 # Function to save matrix to file
 def save_matrix_to_file(matrix, filename):
     rows, cols = matrix.shape
-    print(matrix)
     try:
         max_nonzeros = int(np.count_nonzero(matrix, axis=1).max())
     # empty matrix edge case 
@@ -69,8 +68,7 @@ def compile_implementations():
         print(e.output)
 
 # Deleting test files for regenerating them
-def delete_files_in_directory():
-    directory_path = "files/"
+def delete_files_in_directory(directory_path):
     try:
         files = os.listdir(directory_path)
         for file in files:
@@ -90,7 +88,7 @@ def parse_execution_time(output):
 
 # Function to generate test matrices
 def generate_test_matrices():
-    delete_files_in_directory()
+    delete_files_in_directory("files/test_matrices/")
     for size in MATRIX_SIZES:
         matrix_a_filename = f"files/matrixA_{size}.txt"
         matrix_b_filename = f"files/matrixB_{size}.txt"
@@ -102,6 +100,7 @@ def generate_test_matrices():
             print(f"Generated: {matrix_a_filename} and {matrix_b_filename}")
 
 def generate_edge_case_matrices():
+    delete_files_in_directory("files/edge_matrices/")
     for case_name, case_params in EDGE_CASES:
         matrix_a_filename = f"files/edge_case_{case_name}_A.txt"
         matrix_b_filename = f"files/edge_case_{case_name}_B.txt"
@@ -132,21 +131,17 @@ def run_tests():
         matrix_b_filename = f"files/matrixB_{size}.txt"
         
         for impl in IMPLEMENTATIONS:
-            print(f"\nTesting {impl} with matrix size {size}x{size}")
+            print(f"\nTesting V{impl} with matrix size {size}x{size}")
             execution_times = []
             
             for i in range(3):  # Run each test three times
-                # start_time = time.time()
                 try:
                     command = [f"./main", f"-V {impl}", "-B", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-ofiles/result_V{impl}_{size}.txt"]
                     returncode, stdout, stderr = run_isolated_test(command)
-                    # elapsed_time = time.time() - start_time
                     if returncode == 0:
                         execution_time = parse_execution_time(stdout.decode())
                         if execution_time is not None:
                             execution_times.append(execution_time)
-                            print(f"Run {i+1} Execution Time: {execution_time} seconds")
-                            # print(f"Execution time: {execution_time} seconds")
                         else:
                             print("Failed to parse execution time from the output.")
                     else:
@@ -156,14 +151,14 @@ def run_tests():
 
             if execution_times:
                 avg_time = sum(execution_times) / len(execution_times)
-                print(f"Average Execution Time for {impl} with matrix size {size}x{size}: {avg_time:.6f} seconds")
+                print(f"Average Execution Time for V{impl} with matrix size {size}x{size}: {avg_time:.6f} seconds")
                 performance_results[impl].append(avg_time)
                 
                 # Check correctness
                 expected_file = f"files/expected_result_{size}.txt"
-                command = ["./main", "-V 0", matrix_a_filename, matrix_b_filename, expected_file]
+                command = ["./main", "-V0", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-o{expected_file}"]
                 returncode, stdout, stderr = run_isolated_test(command)
-                if returncode == 0 and compare_matrices(f"files/result_{impl}_{size}.txt", expected_file):
+                if returncode == 0 and compare_matrices(f"files/result_V{impl}_{size}.txt", expected_file):
                     print(f"Output correctness: PASSED")
                 else:
                     print(f"Output correctness: FAILED")
@@ -179,24 +174,25 @@ def run_edge_case_tests():
         matrix_b_filename = f"files/edge_case_{case_name}_B.txt"
         
         for impl in IMPLEMENTATIONS:
-            print(f"\nTesting {impl} with edge case: {case_name}")
+            print(f"\nTesting V{impl} with edge case: {case_name}")
             
             # Measure execution time
             start_time = time.time()
             try:
-                command = [f"./main", f"-V{impl}", "-B", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-ofiles/result_{impl}_{case_name}.txt"]
+                command = [f"./main", f"-V{impl}", "-B", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-ofiles/result_V{impl}_{case_name}.txt"]
                 returncode, stdout, stderr = run_isolated_test(command)
-                elapsed_time = time.time() - start_time
                 if returncode == 0:
-                    print(f"Execution Time: {elapsed_time:.6f} seconds")
+                    execution_time = parse_execution_time(stdout.decode())
+                    if execution_time is not None:
+                        print(f"Execution Time: {execution_time:.6f} seconds")
                 else:
                     print(f"Error: {stderr.decode().strip()}")
                 
                 # Check correctness
                 expected_file = f"files/expected_result_{case_name}.txt"
-                command = ["./main", "-V 0", matrix_a_filename, matrix_b_filename, expected_file]
+                command = ["./main", "-V0", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-o{expected_file}"]
                 returncode, stdout, stderr = run_isolated_test(command)
-                if returncode == 0 and compare_matrices(f"files/result_{impl}_{case_name}.txt", expected_file):
+                if returncode == 0 and compare_matrices(f"files/result_V{impl}_{case_name}.txt", expected_file):
                     print(f"Output correctness: PASSED")
                 else:
                     print(f"Output correctness: FAILED")
@@ -217,7 +213,7 @@ def plot_performance_results(performance_results):
         if sizes and times:  # Ensure there's data to plot
             plt.plot(sizes, times, marker='o', label=impl)
     
-    plt.xlabel('Matrix Size (NxN)')
+    plt.xlabel('Matrix Size (NxM)')
     plt.ylabel('Average Execution Time (seconds)')
     plt.title('Performance Comparison of Matrix Multiplication Implementations')
     plt.legend()
