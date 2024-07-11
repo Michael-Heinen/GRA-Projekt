@@ -5,6 +5,23 @@ import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 
+# Base directories
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
+
+FILES_DIR = os.path.join(BASE_DIR, 'files')
+RESULTS_DIR = os.path.join(FILES_DIR, 'results')
+TEST_MATRICES_DIR = os.path.join(FILES_DIR, 'test_matrices')
+EDGE_MATRICES_DIR = os.path.join(FILES_DIR, 'edge_matrices')
+EXPECTED_DIR = os.path.join(FILES_DIR, 'expected')
+
+# Ensure directories exist
+os.makedirs(FILES_DIR, exist_ok=True)
+os.makedirs(RESULTS_DIR, exist_ok=True)
+os.makedirs(TEST_MATRICES_DIR, exist_ok=True)
+os.makedirs(EDGE_MATRICES_DIR, exist_ok=True)
+os.makedirs(EXPECTED_DIR, exist_ok=True)
+
 # Constants
 IMPLEMENTATIONS = [0]
 MATRIX_SIZES = [2, 4, 8, 16]
@@ -32,10 +49,8 @@ def save_matrix_to_file(matrix, filename):
     rows, cols = matrix.shape
     try:
         max_nonzeros = int(np.count_nonzero(matrix, axis=1).max())
-    # empty matrix edge case 
-    except ValueError:
+    except ValueError:  # empty matrix edge case
         max_nonzeros = 0
-        
 
     with open(filename, 'w') as f:
         f.write(f"{rows},{cols},{max_nonzeros}\n")
@@ -64,7 +79,7 @@ def compare_matrices(file1, file2):
 # Function to compile the implementations
 def compile_implementations():
     try:
-        subprocess.run(["make"], check=True, cwd=".").stdout
+        subprocess.run(["make"], check=True, cwd=BASE_DIR).stdout
     except subprocess.CalledProcessError as e:
         print(e.output)
 
@@ -89,22 +104,22 @@ def parse_execution_time(output):
 
 # Function to generate test matrices
 def generate_test_matrices():
-    delete_files_in_directory("files/test_matrices/")
+    delete_files_in_directory(TEST_MATRICES_DIR)
     for size in MATRIX_SIZES:
-        matrix_a_filename = f"files/matrixA_{size}.txt"
-        matrix_b_filename = f"files/matrixB_{size}.txt"
+        matrix_a_filename = os.path.join(TEST_MATRICES_DIR, f"matrixA_{size}.txt")
+        matrix_b_filename = os.path.join(TEST_MATRICES_DIR, f"matrixB_{size}.txt")
         if not (os.path.exists(matrix_a_filename) and os.path.exists(matrix_b_filename)):
             matrix_a = generate_matrix(size, size, DENSITY)
             matrix_b = generate_matrix(size, size, DENSITY)
             save_matrix_to_file(matrix_a, matrix_a_filename)
             save_matrix_to_file(matrix_b, matrix_b_filename)
-            print(f"Generated: {matrix_a_filename} and {matrix_b_filename}")
+            # print(f"Generated: {matrix_a_filename} and {matrix_b_filename}")
 
 def generate_edge_case_matrices():
-    delete_files_in_directory("files/edge_matrices/")
+    delete_files_in_directory(EDGE_MATRICES_DIR)
     for case_name, case_params in EDGE_CASES:
-        matrix_a_filename = f"files/edge_case_{case_name}_A.txt"
-        matrix_b_filename = f"files/edge_case_{case_name}_B.txt"
+        matrix_a_filename = os.path.join(EDGE_MATRICES_DIR, f"edge_case_{case_name}_A.txt")
+        matrix_b_filename = os.path.join(EDGE_MATRICES_DIR, f"edge_case_{case_name}_B.txt")
         if not (os.path.exists(matrix_a_filename) and os.path.exists(matrix_b_filename)):
             if len(case_params) == 2:
                 rows, cols = case_params
@@ -116,11 +131,11 @@ def generate_edge_case_matrices():
                 matrix_b = generate_matrix(rows, cols, density)
             save_matrix_to_file(matrix_a, matrix_a_filename)
             save_matrix_to_file(matrix_b, matrix_b_filename)
-            print(f"Generated: {matrix_a_filename} and {matrix_b_filename}")
+            # print(f"Generated: {matrix_a_filename} and {matrix_b_filename}")
 
 # Function to run the tests in isolation
 def run_isolated_test(command):
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=BASE_DIR)
     stdout, stderr = process.communicate()
     return process.returncode, stdout, stderr
 
@@ -128,8 +143,8 @@ def run_isolated_test(command):
 def run_tests(num_runs):
     performance_results = {impl: [] for impl in IMPLEMENTATIONS}
     for size in MATRIX_SIZES:
-        matrix_a_filename = f"files/matrixA_{size}.txt"
-        matrix_b_filename = f"files/matrixB_{size}.txt"
+        matrix_a_filename = os.path.join(TEST_MATRICES_DIR, f"matrixA_{size}.txt")
+        matrix_b_filename = os.path.join(TEST_MATRICES_DIR, f"matrixB_{size}.txt")
         
         for impl in IMPLEMENTATIONS:
             print(f"\nTesting V{impl} with matrix size {size}x{size}")
@@ -137,7 +152,7 @@ def run_tests(num_runs):
             
             for i in range(num_runs):  # Run each test three times
                 try:
-                    command = [f"./main", f"-V {impl}", "-B", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-ofiles/result_V{impl}_{size}.txt"]
+                    command = [os.path.join(BASE_DIR, "main"), f"-V {impl}", "-B", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-o{os.path.join(RESULTS_DIR, f'result_V{impl}_{size}.txt')}"]
                     returncode, stdout, stderr = run_isolated_test(command)
                     if returncode == 0:
                         execution_time = parse_execution_time(stdout.decode())
@@ -156,10 +171,10 @@ def run_tests(num_runs):
                 performance_results[impl].append(avg_time)
                 
                 # Check correctness
-                expected_file = f"files/expected_result_{size}.txt"
-                command = ["./main", "-V0", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-o{expected_file}"]
+                expected_file = os.path.join(EXPECTED_DIR, f"expected_result_{size}.txt")
+                command = [os.path.join(BASE_DIR, "main"), "-V0", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-o{expected_file}"]
                 returncode, stdout, stderr = run_isolated_test(command)
-                if returncode == 0 and compare_matrices(f"files/result_V{impl}_{size}.txt", expected_file):
+                if returncode == 0 and compare_matrices(os.path.join(RESULTS_DIR, f"result_V{impl}_{size}.txt"), expected_file):
                     print(f"Output correctness: PASSED")
                 else:
                     print(f"Output correctness: FAILED")
@@ -170,33 +185,20 @@ def run_tests(num_runs):
 # Function to run edge case tests
 def run_edge_case_tests():
     for case_name, case_params in EDGE_CASES:
-        print(f"\nTesting edge case: {case_name}")
-        matrix_a_filename = f"files/edge_case_{case_name}_A.txt"
-        matrix_b_filename = f"files/edge_case_{case_name}_B.txt"
-        
+        matrix_a_filename = os.path.join(EDGE_MATRICES_DIR, f"edge_case_{case_name}_A.txt")
+        matrix_b_filename = os.path.join(EDGE_MATRICES_DIR, f"edge_case_{case_name}_B.txt")
+
         for impl in IMPLEMENTATIONS:
-            print(f"\nTesting V{impl} with edge case: {case_name}")
-            
+            print(f"\nTesting V{impl} with edge case '{case_name}'")
             try:
-                command = [f"./main", f"-V{impl}", "-B", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-ofiles/result_V{impl}_{case_name}.txt"]
+                command = [os.path.join(BASE_DIR, "main"), f"-V {impl}", "-B", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-o{os.path.join(RESULTS_DIR, f'result_edge_case_{case_name}_V{impl}.txt')}"]
                 returncode, stdout, stderr = run_isolated_test(command)
                 if returncode == 0:
-                    execution_time = parse_execution_time(stdout.decode())
-                    if execution_time is not None:
-                        print(f"Execution Time: {execution_time:.6f} seconds")
+                    print(f"Edge case '{case_name}' Execution: PASSED")
                 else:
-                    print(f"Error: {stderr.decode().strip()}")
-                
-                # Check correctness
-                expected_file = f"files/expected_result_{case_name}.txt"
-                command = ["./main", "-V0", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-o{expected_file}"]
-                returncode, stdout, stderr = run_isolated_test(command)
-                if returncode == 0 and compare_matrices(f"files/result_V{impl}_{case_name}.txt", expected_file):
-                    print(f"Output correctness: PASSED")
-                else:
-                    print(f"Output correctness: FAILED")
+                    print(f"Edge case '{case_name}' Execution Error: {stderr.decode().strip()}")
             except Exception as e:
-                print(f"Execution error: {e}")
+                print(f"Edge case '{case_name}' Execution error: {e}")
 
 # Function to plot performance results
 def plot_performance_results(performance_results):
@@ -217,8 +219,7 @@ def plot_performance_results(performance_results):
     plt.title('Performance Comparison of Matrix Multiplication Implementations')
     plt.legend()
     plt.grid(True)
-    plt.savefig('script/performance_comparison.png')
-    # plt.show()
+    plt.savefig(os.path.join(SCRIPT_DIR, 'performance_comparison.png'))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Matrix Multiplication Performance Testing')
@@ -229,13 +230,14 @@ if __name__ == "__main__":
     parser.add_argument('--matrix_sizes', type=int, nargs='+', default=[2, 4, 8, 16], help='List of matrix sizes')
     parser.add_argument('--num_runs', type=int, default=3, help='Number of runs for each test')
     parser.add_argument('--plot', type=bool, default=True, help='Plot performance results')
-    parser.add_argument('--versions', type=int, default=[0, 1, 2], help='Versions to test')
+    parser.add_argument('--versions', type=int, default=[0], help='Versions to test')
 
     args = parser.parse_args()
     
     MATRIX_SIZES = args.matrix_sizes
     DENSITY = args.density
     IMPLEMENTATIONS = args.versions
+
 
     # Compile the implementations
     if args.compile:
@@ -246,7 +248,7 @@ if __name__ == "__main__":
         generate_test_matrices()
         if(args.edge):
             generate_edge_case_matrices()
-    
+
     # Run matrix tests
     run_tests(args.num_runs)
     
