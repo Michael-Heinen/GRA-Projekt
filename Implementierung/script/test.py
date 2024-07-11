@@ -3,6 +3,7 @@ import subprocess
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+import argparse
 
 # Constants
 IMPLEMENTATIONS = [0]
@@ -124,7 +125,7 @@ def run_isolated_test(command):
     return process.returncode, stdout, stderr
 
 # Function to run the tests
-def run_tests():
+def run_tests(num_runs):
     performance_results = {impl: [] for impl in IMPLEMENTATIONS}
     for size in MATRIX_SIZES:
         matrix_a_filename = f"files/matrixA_{size}.txt"
@@ -134,7 +135,7 @@ def run_tests():
             print(f"\nTesting V{impl} with matrix size {size}x{size}")
             execution_times = []
             
-            for i in range(3):  # Run each test three times
+            for i in range(num_runs):  # Run each test three times
                 try:
                     command = [f"./main", f"-V {impl}", "-B", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-ofiles/result_V{impl}_{size}.txt"]
                     returncode, stdout, stderr = run_isolated_test(command)
@@ -176,8 +177,6 @@ def run_edge_case_tests():
         for impl in IMPLEMENTATIONS:
             print(f"\nTesting V{impl} with edge case: {case_name}")
             
-            # Measure execution time
-            start_time = time.time()
             try:
                 command = [f"./main", f"-V{impl}", "-B", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-ofiles/result_V{impl}_{case_name}.txt"]
                 returncode, stdout, stderr = run_isolated_test(command)
@@ -222,15 +221,35 @@ def plot_performance_results(performance_results):
     # plt.show()
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Matrix Multiplication Performance Testing')
+    parser.add_argument('--compile', type=bool, default=True, help='Compile the implementations')
+    parser.add_argument('--generate', type=bool, default=True, help='Generate test matrices')
+    parser.add_argument('--edge', type=bool, default=False, help='Test edge case matrices')
+    parser.add_argument('--density', type=float, default=0.5, help='Density of the matrices')
+    parser.add_argument('--matrix_sizes', type=int, nargs='+', default=[2, 4, 8, 16], help='List of matrix sizes')
+    parser.add_argument('--num_runs', type=int, default=3, help='Number of runs for each test')
+    parser.add_argument('--plot', type=bool, default=True, help='Plot performance results')
+    parser.add_argument('--versions', type=int, default=[0, 1, 2], help='Versions to test')
+
+    args = parser.parse_args()
+    
+    MATRIX_SIZES = args.matrix_sizes
+    DENSITY = args.density
+    IMPLEMENTATIONS = args.versions
+
     # Compile the implementations
-    compile_implementations()
+    if args.compile:
+        compile_implementations()
 
     # Generate test matrices if needed
-    generate_test_matrices()
-    generate_edge_case_matrices()
+    if args.generate:
+        generate_test_matrices()
+        if(args.edge):
+            generate_edge_case_matrices()
     
     # Run matrix tests
-    run_tests()
+    run_tests(args.num_runs)
     
     # Run edge case tests
-    run_edge_case_tests()
+    if(args.edge):
+        run_edge_case_tests()
