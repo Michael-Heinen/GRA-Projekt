@@ -36,6 +36,8 @@ EDGE_CASES = [
     ("sparse", (4, 4, 0.25))  # Sparse matrix with 25% density
 ]
 
+TESTING = False
+
 # Function to generate matrices
 def generate_matrix(rows, cols, density=0.5):
     if callable(density):
@@ -67,10 +69,11 @@ def save_matrix_to_file(matrix, filename):
         f.write(",".join(index_lines) + "\n")
 
 # Function to compare matrices
-def compare_matrices(file1, file2):
+def compare_matrices(file1, matrix2):
     try:
-        matrix1 = np.loadtxt(file1, delimiter=',', skiprows=1)
-        matrix2 = np.loadtxt(file2, delimiter=',', skiprows=1)
+        matrix1 = load_and_clean_matrix(file1)
+        print(f"Matrix of own Implementation: {matrix1}")
+        print(f"Matrix of comparison: {matrix2}")
         return np.allclose(matrix1, matrix2, atol=1e-6)
     except Exception as e:
         print(f"Comparison error: {e}")
@@ -106,8 +109,8 @@ def parse_execution_time(output):
 def generate_test_matrices():
     delete_files_in_directory(TEST_MATRICES_DIR)
     for size in MATRIX_SIZES:
-        matrix_a_filename = os.path.join(TEST_MATRICES_DIR, f"matrixA_{size}.txt")
-        matrix_b_filename = os.path.join(TEST_MATRICES_DIR, f"matrixB_{size}.txt")
+        matrix_a_filename = os.path.join(TEST_MATRICES_DIR, f"matrixA_{size}x{size}.txt")
+        matrix_b_filename = os.path.join(TEST_MATRICES_DIR, f"matrixB_{size}x{size}.txt")
         if not (os.path.exists(matrix_a_filename) and os.path.exists(matrix_b_filename)):
             matrix_a = generate_matrix(size, size, DENSITY)
             matrix_b = generate_matrix(size, size, DENSITY)
@@ -133,6 +136,26 @@ def generate_edge_case_matrices():
             save_matrix_to_file(matrix_b, matrix_b_filename)
             # print(f"Generated: {matrix_a_filename} and {matrix_b_filename}")
 
+def load_and_clean_matrix(filename):
+    # Read the entire file content as a single string
+    with open(filename, 'r') as f:
+        content = f.read()
+    
+    # Replace '*' with '0'
+    content = content.replace('*', '0') 
+    
+    #Get dimensions
+    lines = content.splitlines()
+    dimensions = lines[0].split(',')
+    rows, cols = int(dimensions[0]), int(dimensions[1])
+
+    # Load the cleaned content into a NumPy array
+    matrix = np.loadtxt(lines, delimiter=',', skiprows=1, max_rows=1)
+
+    # Reshape the matrix according to the dimensions
+    matrix = matrix.reshape((rows, cols))    
+    return matrix
+
 # Function to run the tests in isolation
 def run_isolated_test(command):
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=BASE_DIR)
@@ -143,8 +166,8 @@ def run_isolated_test(command):
 def run_tests(num_runs):
     performance_results = {impl: [] for impl in IMPLEMENTATIONS}
     for size in MATRIX_SIZES:
-        matrix_a_filename = os.path.join(TEST_MATRICES_DIR, f"matrixA_{size}.txt")
-        matrix_b_filename = os.path.join(TEST_MATRICES_DIR, f"matrixB_{size}.txt")
+        matrix_a_filename = os.path.join(TEST_MATRICES_DIR, f"matrixA_{size}x{size}.txt")
+        matrix_b_filename = os.path.join(TEST_MATRICES_DIR, f"matrixB_{size}x{size}.txt")
         
         for impl in IMPLEMENTATIONS:
             print(f"\nTesting V{impl} with matrix size {size}x{size}")
@@ -152,7 +175,7 @@ def run_tests(num_runs):
             
             for i in range(num_runs):  # Run each test three times
                 try:
-                    command = [os.path.join(BASE_DIR, "main"), f"-V {impl}", "-B", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-o{os.path.join(RESULTS_DIR, f'result_V{impl}_{size}.txt')}"]
+                    command = [os.path.join(BASE_DIR, "main"), f"-V {impl}", "-B", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-o{os.path.join(RESULTS_DIR, f'result_V{impl}_{size}x{size}.txt')}"]
                     returncode, stdout, stderr = run_isolated_test(command)
                     if returncode == 0:
                         execution_time = parse_execution_time(stdout.decode())
@@ -170,11 +193,9 @@ def run_tests(num_runs):
                 print(f"Average Execution Time for V{impl} with matrix size {size}x{size}: {avg_time:.6f} seconds")
                 performance_results[impl].append(avg_time)
                 
-                # Check correctness
-                expected_file = os.path.join(EXPECTED_DIR, f"expected_result_{size}.txt")
-                command = [os.path.join(BASE_DIR, "main"), "-V0", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-o{expected_file}"]
-                returncode, stdout, stderr = run_isolated_test(command)
-                if returncode == 0 and compare_matrices(os.path.join(RESULTS_DIR, f"result_V{impl}_{size}.txt"), expected_file):
+                # Check correctness with matrixmultiplication module of numpy
+                mathmul = np.matmul(load_and_clean_matrix(matrix_a_filename), load_and_clean_matrix(matrix_b_filename))                
+                if returncode == 0 and compare_matrices(os.path.join(RESULTS_DIR, f"result_V{impl}_{size}x{size}.txt"), mathmul):
                     print(f"Output correctness: PASSED")
                 else:
                     print(f"Output correctness: FAILED")
@@ -224,19 +245,21 @@ def plot_performance_results(performance_results):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Matrix Multiplication Performance Testing')
     parser.add_argument('--compile', type=bool, default=True, help='Compile the implementations')
-    parser.add_argument('--generate', type=bool, default=True, help='Generate test matrices')
+    parser.add_argument('--generate', type=bool, default=False, help='Generate test matrices')
     parser.add_argument('--edge', type=bool, default=False, help='Test edge case matrices')
     parser.add_argument('--density', type=float, default=0.5, help='Density of the matrices')
     parser.add_argument('--matrix_sizes', type=int, nargs='+', default=[2, 4, 8, 16], help='List of matrix sizes')
-    parser.add_argument('--num_runs', type=int, default=3, help='Number of runs for each test')
+    parser.add_argument('-n','--num_runs', type=int, default=3, help='Number of runs for each test')
     parser.add_argument('--plot', type=bool, default=True, help='Plot performance results')
-    parser.add_argument('--versions', type=int, default=[0], help='Versions to test')
+    parser.add_argument('-v','--versions', type=int, default=[0], help='Versions to test')
+    parser.add_argument('-t','--testing', type=bool, default=False, help='Versions to test')
 
     args = parser.parse_args()
     
     MATRIX_SIZES = args.matrix_sizes
     DENSITY = args.density
     IMPLEMENTATIONS = args.versions
+    TESTING = args.testing
 
 
     # Compile the implementations
