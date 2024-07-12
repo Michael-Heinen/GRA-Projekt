@@ -72,8 +72,9 @@ def save_matrix_to_file(matrix, filename):
 def compare_matrices(file1, matrix2):
     try:
         matrix1 = load_and_clean_matrix(file1)
-        print(f"Matrix of own Implementation: {matrix1}")
-        print(f"Matrix of comparison: {matrix2}")
+        if(TESTING):
+            print(f"Matrix of own Implementation: \n{matrix1}")
+            print(f"Matrix of comparison: \n{matrix2}")
         return np.allclose(matrix1, matrix2, atol=1e-6)
     except Exception as e:
         print(f"Comparison error: {e}")
@@ -244,15 +245,17 @@ def plot_performance_results(performance_results):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Matrix Multiplication Performance Testing')
-    parser.add_argument('--compile', type=bool, default=True, help='Compile the implementations')
-    parser.add_argument('--generate', type=bool, default=False, help='Generate test matrices')
-    parser.add_argument('--edge', type=bool, default=False, help='Test edge case matrices')
-    parser.add_argument('--density', type=float, default=0.5, help='Density of the matrices')
-    parser.add_argument('--matrix_sizes', type=int, nargs='+', default=[2, 4, 8, 16], help='List of matrix sizes')
-    parser.add_argument('-n','--num_runs', type=int, default=3, help='Number of runs for each test')
-    parser.add_argument('--plot', type=bool, default=True, help='Plot performance results')
     parser.add_argument('-v','--versions', type=int, default=[0], help='Versions to test')
-    parser.add_argument('-t','--testing', type=bool, default=False, help='Versions to test')
+    parser.add_argument('-d','--density', type=float, default=0.2, help='Density of the matrices')
+    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[2, 4, 8, 16], help='List of matrix sizes')
+    parser.add_argument('-n','--num_runs', type=int, default=3, help='Number of runs for each test')
+
+    parser.add_argument('-c', '--compile', action='store_false', help='Does NOT Compile the implementations')
+    parser.add_argument('-g', '--generate', action='store_true', help='Generate test matrices')
+    parser.add_argument('-e', '--edge', action='store_true', help='Test edge case matrices')
+    
+    parser.add_argument('-p', '--plot', action='store_false', help='Does NOT Plot performance results')
+    parser.add_argument('-t', '--testing', action='store_true', help='Print Testing output')
 
     args = parser.parse_args()
     
