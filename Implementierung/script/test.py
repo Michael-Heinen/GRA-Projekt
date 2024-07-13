@@ -2,6 +2,7 @@ import os
 import subprocess
 import time
 import numpy as np
+import itertools
 import matplotlib.pyplot as plt
 import argparse
 
@@ -23,9 +24,9 @@ os.makedirs(EDGE_MATRICES_DIR, exist_ok=True)
 os.makedirs(EXPECTED_DIR, exist_ok=True)
 
 # Constants
-IMPLEMENTATIONS = [0]
+IMPLEMENTATIONS = [0, 1, 2]
 MATRIX_SIZES = [2, 4, 8, 16]
-DENSITY = 0.8  # 50% density of non-zero elements
+DENSITY = 0.2  # 50% density of non-zero elements
 EDGE_CASES = [
     ("empty_matrix", (0, 0)),  # Empty matrix
     ("single_element", (1, 1)),  # Single element matrix
@@ -150,11 +151,14 @@ def load_and_clean_matrix(filename):
     dimensions = lines[0].split(',')
     rows, cols = int(dimensions[0]), int(dimensions[1])
 
+    # lines = itertools.islice(content, 0, max_rows=1)
     # Load the cleaned content into a NumPy array
     matrix = np.loadtxt(lines, delimiter=',', skiprows=1, max_rows=1)
 
     # Reshape the matrix according to the dimensions
     matrix = matrix.reshape((rows, cols))    
+    # if(TESTING):
+    #     print(f"Cleaned Matrix: \n{matrix}")
     return matrix
 
 # Function to run the tests in isolation
@@ -247,8 +251,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Matrix Multiplication Performance Testing')
     parser.add_argument('-v','--versions', type=int, default=[0], help='Versions to test')
     parser.add_argument('-d','--density', type=float, default=0.2, help='Density of the matrices')
-    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[2, 4, 8, 16], help='List of matrix sizes')
-    parser.add_argument('-n','--num_runs', type=int, default=3, help='Number of runs for each test')
+    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[2, 4, 8, 16, 128, 256, 1024], help='List of matrix sizes')
+    parser.add_argument('-n','--num_runs', type=int, default=1, help='Number of runs for each test')
 
     parser.add_argument('-c', '--compile', action='store_false', help='Does NOT Compile the implementations')
     parser.add_argument('-g', '--generate', action='store_true', help='Generate test matrices')

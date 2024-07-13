@@ -72,7 +72,7 @@ void write_matrix(const char *filename, const ELLPACKMatrix *matrix, uint64_t ne
             }
             else
             {
-                fprintf(file, "%.1f", matrix->values[i * matrix->noNonZero + j]);
+                fprintf(file, "%f", matrix->values[i * matrix->noNonZero + j]);
             }
             if (i * new_noNonZero + j < matrix->noRows * new_noNonZero - 1)
             {
