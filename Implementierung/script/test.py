@@ -24,9 +24,6 @@ os.makedirs(EDGE_MATRICES_DIR, exist_ok=True)
 os.makedirs(EXPECTED_DIR, exist_ok=True)
 
 # Constants
-IMPLEMENTATIONS = [0, 1, 2]
-MATRIX_SIZES = [2, 4, 8, 16]
-DENSITY = 0.2  # 50% density of non-zero elements
 EDGE_CASES = [
     ("empty_matrix", (0, 0)),  # Empty matrix
     ("single_element", (1, 1)),  # Single element matrix
@@ -36,8 +33,6 @@ EDGE_CASES = [
     ("rectangular", (4, 2)),  # Rectangular matrix
     ("sparse", (4, 4, 0.25))  # Sparse matrix with 25% density
 ]
-
-TESTING = False
 
 # Function to generate matrices
 def generate_matrix(rows, cols, density=0.5):
@@ -57,18 +52,22 @@ def save_matrix_to_file(matrix, filename):
 
     with open(filename, 'w') as f:
         f.write(f"{rows},{cols},{max_nonzeros}\n")
+        
         row_lines = []
         for row in matrix:
             row_values = [str(v) if v != 0 else "*" for v in row]
-            row_lines.append(",".join(row_values))
+            filtered_values = [v for v in row_values if v != "*"][:max_nonzeros]
+            filtered_values.extend(["*"] * (max_nonzeros - len(filtered_values)))
+            row_lines.append(",".join(filtered_values))
         f.write(",".join(row_lines) + "\n")
-    
+        
         index_lines = []
         for row in matrix:
             row_indices = [str(idx) if row[idx] != 0 else "*" for idx in range(cols)]
-            index_lines.append(",".join(row_indices))
+            filtered_indices = [idx for idx in row_indices if idx != "*"][:max_nonzeros]
+            filtered_indices.extend(["*"] * (max_nonzeros - len(filtered_indices)))
+            index_lines.append(",".join(filtered_indices))
         f.write(",".join(index_lines) + "\n")
-
 # Function to compare matrices
 def compare_matrices(file1, matrix2):
     try:
@@ -139,27 +138,30 @@ def generate_edge_case_matrices():
             # print(f"Generated: {matrix_a_filename} and {matrix_b_filename}")
 
 def load_and_clean_matrix(filename):
-    # Read the entire file content as a single string
     with open(filename, 'r') as f:
-        content = f.read()
-    
-    # Replace '*' with '0'
-    content = content.replace('*', '0') 
-    
-    #Get dimensions
-    lines = content.splitlines()
-    dimensions = lines[0].split(',')
-    rows, cols = int(dimensions[0]), int(dimensions[1])
+        rows, cols, max_nonzeros = map(int, f.readline().strip().split(','))
+        
+        value_lines = [f.readline().strip().split(',')]
+        index_lines = [f.readline().strip().split(',')]
 
-    # lines = itertools.islice(content, 0, max_rows=1)
-    # Load the cleaned content into a NumPy array
-    matrix = np.loadtxt(lines, delimiter=',', skiprows=1, max_rows=1)
+        # print(f"rows: {rows}, cols: {cols}, max_nonzero: {max_nonzeros}")
+        values = np.zeros((rows, cols))
+        
+        value_row = value_lines[0]
+        index_row = index_lines[0]
+        count = 0
+        row_counter = 0
+        for val, idx in zip(value_row, index_row):
+            if val != "*" and idx != "*":
+                col_index = int(idx)
+                values[row_counter, col_index] = float(val)
+            count += 1
+            if count >= max_nonzeros:
+                count = 0
+                row_counter += 1
 
-    # Reshape the matrix according to the dimensions
-    matrix = matrix.reshape((rows, cols))    
-    # if(TESTING):
-    #     print(f"Cleaned Matrix: \n{matrix}")
-    return matrix
+    return values
+
 
 # Function to run the tests in isolation
 def run_isolated_test(command):
@@ -250,8 +252,8 @@ def plot_performance_results(performance_results):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Matrix Multiplication Performance Testing')
     parser.add_argument('-v','--versions', type=int, default=[0], help='Versions to test')
-    parser.add_argument('-d','--density', type=float, default=0.2, help='Density of the matrices')
-    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[2, 4, 8, 16, 128, 256, 1024], help='List of matrix sizes')
+    parser.add_argument('-d','--density', type=float, default=0.5, help='Density of the matrices')
+    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[2, 4, 8, 16, 128], help='List of matrix sizes')
     parser.add_argument('-n','--num_runs', type=int, default=1, help='Number of runs for each test')
 
     parser.add_argument('-c', '--compile', action='store_false', help='Does NOT Compile the implementations')
