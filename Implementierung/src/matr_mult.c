@@ -17,7 +17,6 @@ void matr_mult_ellpack(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMa
     result->values = (float *)calloc(result->noRows * result->noNonZero, sizeof(float));
     result->indices = (uint64_t *)calloc(result->noRows * result->noNonZero, sizeof(uint64_t));
 
-
     for (uint64_t i = 0; i < a->noRows; ++i)
     {
         for (uint64_t k = 0; k < a->noNonZero; ++k)
@@ -40,10 +39,9 @@ void matr_mult_ellpack(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMa
                 }
                 uint64_t b_col = b->indices[b_index];
 
-
-                for (uint64_t m = 0; i < result->noNonZero; m++)
+                for (uint64_t m = 0; m < result->noNonZero; m++)
                 {
-                    if (result->indices[i * result->noNonZero + m] == 0 && result->values[i * result->noNonZero + m] == 0.0f)
+                    if (result->values[i * result->noNonZero + m] == 0.0f || result->indices[i * result->noNonZero + m] == b_col)
                     {
                         result->values[i * result->noNonZero + m] += a_value * b_value;
                         result->indices[i * result->noNonZero + m] = b_col;

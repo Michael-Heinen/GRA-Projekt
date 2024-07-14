@@ -251,9 +251,9 @@ def plot_performance_results(performance_results):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Matrix Multiplication Performance Testing')
-    parser.add_argument('-v','--versions', type=int, default=[0], help='Versions to test')
+    parser.add_argument('-v','--versions', type=int, nargs='+', default=[2], help='Versions to test')
     parser.add_argument('-d','--density', type=float, default=0.5, help='Density of the matrices')
-    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[2, 4, 8, 16, 128], help='List of matrix sizes')
+    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[256, 512], help='List of matrix sizes')
     parser.add_argument('-n','--num_runs', type=int, default=1, help='Number of runs for each test')
 
     parser.add_argument('-c', '--compile', action='store_false', help='Does NOT Compile the implementations')
