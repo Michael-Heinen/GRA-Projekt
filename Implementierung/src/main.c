@@ -6,7 +6,6 @@
 #include <errno.h>
 #include <string.h>
 
-
 #include "ellpack.h"
 #include "matrix_io.h"
 #include <unistd.h> // sleep
