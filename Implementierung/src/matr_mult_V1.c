@@ -6,7 +6,7 @@ void matr_mult_ellpack_V1(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPAC
 {
     if (a->noCols != b->noRows)
     {
-        fprintf(stderr, "Matrix dimensions do not match for multiplication\n");
+        fprintf(stderr, "Matrix dimensions do not match for multiplication (matr_mult_ellpack_V1 (V1))\n");
         exit(EXIT_FAILURE);
     }
 
@@ -16,6 +16,12 @@ void matr_mult_ellpack_V1(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPAC
 
     result->values = (float *)calloc(result->noRows * result->noNonZero, sizeof(float));
     result->indices = (uint64_t *)calloc(result->noRows * result->noNonZero, sizeof(uint64_t));
+
+    if (!result->values || !result->indices)
+    {
+        fprintf(stderr, "Memory allocation failed (matr_mult_ellpack_V1 (V1))\n");
+        exit(EXIT_FAILURE);
+    }
 
     for (uint64_t i = 0; i < a->noRows; ++i)
     {

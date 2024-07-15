@@ -12,8 +12,8 @@ typedef struct
     uint64_t *indices;
 } ELLPACKMatrix;
 
-void read_matrix(const char *filename, ELLPACKMatrix *matrix);
-void write_matrix(const char *filename, const ELLPACKMatrix *matrix, uint64_t new_noNonZero);
+int read_matrix(const char *filename, ELLPACKMatrix *matrix);
+int write_matrix(const char *filename, const ELLPACKMatrix *matrix, uint64_t new_noNonZero);
 void matr_mult_ellpack(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMatrix *result);
 void matr_mult_ellpack_V1(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMatrix *result);
 void matr_mult_ellpack_V2(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMatrix *result);
