@@ -4,7 +4,7 @@
 #include <inttypes.h>
 // #include <stdint.h>
 
-void read_matrix(const char *filename, ELLPACKMatrix *matrix)
+int read_matrix(const char *filename, ELLPACKMatrix *matrix)
 {
     FILE *file = fopen(filename, "r");
     if (!file)
@@ -26,45 +26,78 @@ void read_matrix(const char *filename, ELLPACKMatrix *matrix)
     if (!matrix->values || !matrix->indices)
     {
         fprintf(stderr, "Memory allocation failed\n");
+        free(matrix->values);
+        free(matrix->indices);
         fclose(file);
         return -1;
     }
 
-    char ch;
     for (uint64_t i = 0; i < matrix->noRows * matrix->noNonZero; ++i)
     {
-        if (fscanf(file, " %c", &ch) == 1 && ch == '*')
+        char ch;
+        if (fscanf(file, " %c", &ch) != 1)
+        {
+            fprintf(stderr, "Error reading values from file %s\n", filename);
+            free(matrix->values);
+            free(matrix->indices);
+            fclose(file);
+            return -1;
+        }
+
+        if (ch == '*')
         {
             matrix->values[i] = 0.0f;
-            // Skip the comma
-            fscanf(file, "%*c");
-        }
-        else
-        {
+            if (fscanf(file, "%*c") != 0)
+            {
+                fprintf(stderr, "Error skipping the comma (value) %s\n", filename);
+            }
+        } else {
             ungetc(ch, file); // Put back the character if it's not '*'
-            fscanf(file, "%f,", &matrix->values[i]);
+            if (fscanf(file, "%f,", &matrix->values[i]) != 1) {
+                fprintf(stderr, "Error reading value from file %s\n", filename);
+                free(matrix->values);
+                free(matrix->indices);
+                fclose(file);
+                return -1;
+            }
         }
     }
     for (uint64_t i = 0; i < matrix->noRows * matrix->noNonZero; ++i)
     {
-        if (fscanf(file, " %c", &ch) == 1 && ch == '*')
+        char ch;
+        if (fscanf(file, " %c", &ch) != 1)
+        {
+            fprintf(stderr, "Error reading indices from file %s\n", filename);
+            free(matrix->values);
+            free(matrix->indices);
+            fclose(file);
+            return -1;
+        }
+
+        if (ch == '*')
         {
             matrix->indices[i] = 0;
-            // Skip the comma
-            fscanf(file, "%*c");
-        }
-        else
-        {
-            ungetc(ch, file); // Put back the character if it's not '*'
-            fscanf(file, "%" SCNu64 ",", &matrix->indices[i]);
+            if (fscanf(file, "%*c") != 0)
+            {
+                fprintf(stderr, "Error skipping the comma (index) %s\n", filename);
+            }
+        } else {
+            ungetc(ch, file);
+            if (fscanf(file, "%" SCNu64 ",", &matrix->indices[i]) != 1)
+            {
+                fprintf(stderr, "Error reading index from file %s\n", filename);
+                free(matrix->values);
+                free(matrix->indices);
+                fclose(file);
+                return -1;
+            }
         }
     }
-
     fclose(file);
     return 0;
 }
 
-void write_matrix(const char *filename, const ELLPACKMatrix *matrix, uint64_t new_noNonZero)
+int write_matrix(const char *filename, const ELLPACKMatrix *matrix, uint64_t new_noNonZero)
 {
     FILE *file = fopen(filename, "w");
     if (!file)

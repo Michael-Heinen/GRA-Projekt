@@ -3,6 +3,9 @@
 #include <getopt.h>
 #include <stdbool.h>
 #include <linux/time.h>
+#include <errno.h>
+#include <string.h>
+
 
 #include "ellpack.h"
 #include "matrix_io.h"
@@ -82,13 +85,13 @@ int main(int argc, char **argv)
             break;
         default:
             print_usage(progname);
-            handle_error("Wrong format: look at Help Message (Usage)")
+            handle_error("Wrong format: look at Help Message (Usage)");
         }
     }
 
     if (!input_file_a || !input_file_b || !output_file)
     {
-        handle_error("Error: Wrong input/output formatting: Input and output files must be specified")
+        handle_error("Error: Wrong input/output formatting: Input and output files must be specified");
     }
 
     ELLPACKMatrix matrix_a = {0}, matrix_b = {0}, result = {0};
@@ -116,22 +119,13 @@ int main(int argc, char **argv)
     switch (version)
     {
     case 0:
-        if (matr_mult_ellpack(&matrix_a, &matrix_b, &result) != 0)
-        {
-            handle_error("matr_mult_ellpack (V0)")
-        }
+        matr_mult_ellpack(&matrix_a, &matrix_b, &result);
         break;
     case 1:
-        if (matr_mult_ellpack_V1(&matrix_a, &matrix_b, &result) != 0)
-        {
-            handle_error("matr_mult_ellpack_V1 (V1)")
-        }
+        matr_mult_ellpack_V1(&matrix_a, &matrix_b, &result);
         break;
     case 2:
-        if (matr_mult_ellpack_V2(&matrix_a, &matrix_b, &result) != 0)
-        {
-            handle_error("matr_mult_ellpack_V2 (V2)")
-        }
+        matr_mult_ellpack_V2(&matrix_a, &matrix_b, &result);
         break;
     default:
         handle_error("Unknown version specified");
