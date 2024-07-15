@@ -10,13 +10,25 @@ void read_matrix(const char *filename, ELLPACKMatrix *matrix)
     if (!file)
     {
         fprintf(stderr, "Error opening file %s\n", filename);
-        exit(EXIT_FAILURE);
+        return -1;
     }
 
-    fscanf(file, "%" SCNd64 ",%" SCNd64 ",%" SCNd64, &matrix->noRows, &matrix->noCols, &matrix->noNonZero);
+    if (fscanf(file, "%" SCNu64 ",%" SCNu64 ",%" SCNu64, &matrix->noRows, &matrix->noCols, &matrix->noNonZero) != 3)
+    {
+        fprintf(stderr, "Error reading matrix dimensions from file %s\n", filename);
+        fclose(file);
+        return -1;
+    }
 
     matrix->values = (float *)malloc(matrix->noRows * matrix->noNonZero * sizeof(float));
     matrix->indices = (uint64_t *)malloc(matrix->noRows * matrix->noNonZero * sizeof(uint64_t));
+
+    if (!matrix->values || !matrix->indices)
+    {
+        fprintf(stderr, "Memory allocation failed\n");
+        fclose(file);
+        return -1;
+    }
 
     char ch;
     for (uint64_t i = 0; i < matrix->noRows * matrix->noNonZero; ++i)
@@ -49,6 +61,7 @@ void read_matrix(const char *filename, ELLPACKMatrix *matrix)
     }
 
     fclose(file);
+    return 0;
 }
 
 void write_matrix(const char *filename, const ELLPACKMatrix *matrix, uint64_t new_noNonZero)
@@ -57,7 +70,7 @@ void write_matrix(const char *filename, const ELLPACKMatrix *matrix, uint64_t ne
     if (!file)
     {
         fprintf(stderr, "Error opening file %s\n", filename);
-        exit(EXIT_FAILURE);
+        return -1;
     }
 
     fprintf(file, "%" PRId64 ",%" PRId64 ",%" PRId64 "\n", matrix->noRows, matrix->noCols, new_noNonZero);
@@ -103,4 +116,5 @@ void write_matrix(const char *filename, const ELLPACKMatrix *matrix, uint64_t ne
     // fprintf(file, "\n");
 
     fclose(file);
+    return 0;
 }
