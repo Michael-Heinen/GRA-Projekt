@@ -1,8 +1,7 @@
 import os
 import subprocess
-import time
 import numpy as np
-import itertools
+import cupy as cp
 import matplotlib.pyplot as plt
 import argparse
 
@@ -201,7 +200,10 @@ def run_tests(num_runs):
                 performance_results[impl].append(avg_time)
                 
                 # Check correctness with matrixmultiplication module of numpy
-                mathmul = np.matmul(load_and_clean_matrix(matrix_a_filename), load_and_clean_matrix(matrix_b_filename))                
+                if(GPU):
+                    mathmul = cp.matmul(load_and_clean_matrix(matrix_a_filename), load_and_clean_matrix(matrix_b_filename))                
+                else:
+                    mathmul = np.matmul(load_and_clean_matrix(matrix_a_filename), load_and_clean_matrix(matrix_b_filename))                
                 if returncode == 0 and compare_matrices(os.path.join(RESULTS_DIR, f"result_V{impl}_{size}x{size}.txt"), mathmul):
                     print(f"Output correctness: PASSED")
                 else:
@@ -251,9 +253,9 @@ def plot_performance_results(performance_results):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Matrix Multiplication Performance Testing')
-    parser.add_argument('-v','--versions', type=int, default=[0], help='Versions to test')
+    parser.add_argument('-v','--versions', type=int, nargs='+', default=[2], help='Versions to test')
     parser.add_argument('-d','--density', type=float, default=0.5, help='Density of the matrices')
-    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[2, 4, 8, 16, 128], help='List of matrix sizes')
+    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[256, 512], help='List of matrix sizes')
     parser.add_argument('-n','--num_runs', type=int, default=1, help='Number of runs for each test')
 
     parser.add_argument('-c', '--compile', action='store_false', help='Does NOT Compile the implementations')
@@ -262,6 +264,7 @@ if __name__ == "__main__":
     
     parser.add_argument('-p', '--plot', action='store_false', help='Does NOT Plot performance results')
     parser.add_argument('-t', '--testing', action='store_true', help='Print Testing output')
+    parser.add_argument('-gpu', '--gpu', action='store_true', help='Using GPU for Comparing Matrix Mul')
 
     args = parser.parse_args()
     
@@ -269,6 +272,7 @@ if __name__ == "__main__":
     DENSITY = args.density
     IMPLEMENTATIONS = args.versions
     TESTING = args.testing
+    GPU = args.gpu
 
     delete_files_in_directory(RESULTS_DIR)
     delete_files_in_directory(EXPECTED_DIR)

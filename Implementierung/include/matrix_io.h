@@ -3,7 +3,7 @@
 
 #include "ellpack.h"
 
-void read_matrix(const char *filename, ELLPACKMatrix *matrix);
-void write_matrix(const char *filename, const ELLPACKMatrix *matrix, uint64_t new_noNonZero);
+int read_matrix(const char *filename, ELLPACKMatrix *matrix);
+int write_matrix(const char *filename, const ELLPACKMatrix *matrix, uint64_t new_noNonZero);
 
 #endif // MATRIX_IO_H
