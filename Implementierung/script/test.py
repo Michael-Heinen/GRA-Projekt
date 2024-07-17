@@ -270,6 +270,8 @@ if __name__ == "__main__":
     IMPLEMENTATIONS = args.versions
     TESTING = args.testing
 
+    delete_files_in_directory(RESULTS_DIR)
+    delete_files_in_directory(EXPECTED_DIR)
 
     # Compile the implementations
     if args.compile:
