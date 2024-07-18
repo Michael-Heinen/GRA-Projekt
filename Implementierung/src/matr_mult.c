@@ -6,7 +6,7 @@ void matr_mult_ellpack(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMa
 {
     if (a->noCols != b->noRows)
     {
-        fprintf(stderr, "Matrix dimensions do not match for multiplication\n");
+        fprintf(stderr, "Matrix dimensions do not match for multiplication (matr_mult_ellpack (V0))\n");
         exit(EXIT_FAILURE);
     }
 
@@ -17,6 +17,13 @@ void matr_mult_ellpack(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMa
     result->values = (float *)calloc(result->noRows * result->noNonZero, sizeof(float));
     result->indices = (uint64_t *)calloc(result->noRows * result->noNonZero, sizeof(uint64_t));
 
+    if (!result->values || !result->indices)
+    {
+        fprintf(stderr, "Memory allocation failed (matr_mult (V0))\n");
+        free(result->values);
+        free(result->indices);
+        exit(EXIT_FAILURE);
+    }
 
     for (uint64_t i = 0; i < a->noRows; ++i)
     {
@@ -40,10 +47,9 @@ void matr_mult_ellpack(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMa
                 }
                 uint64_t b_col = b->indices[b_index];
 
-
-                for (uint64_t m = 0; i < result->noNonZero; m++)
+                for (uint64_t m = 0; m < result->noNonZero; m++)
                 {
-                    if (result->indices[i * result->noNonZero + m] == 0 && result->values[i * result->noNonZero + m] == 0.0f)
+                    if (result->values[i * result->noNonZero + m] == 0.0f || result->indices[i * result->noNonZero + m] == b_col)
                     {
                         result->values[i * result->noNonZero + m] += a_value * b_value;
                         result->indices[i * result->noNonZero + m] = b_col;
@@ -53,27 +59,4 @@ void matr_mult_ellpack(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMa
             }
         }
     }
-}
-
-// compute noNonZero in result matrix
-int compute_noNonZero(ELLPACKMatrix *matrix)
-{
-    uint64_t maxNoNonZero = 0;
-    for (uint64_t i = 0; i < matrix->noCols; i++)
-    {
-        uint64_t tmpNoNonZero = 0;
-        for (uint64_t j = 0; j < matrix->noNonZero; j++)
-        {
-            if (matrix->values[i * matrix->noNonZero + j] == 0.0f)
-            {
-                break;
-            }
-            tmpNoNonZero++;
-        }
-        if (tmpNoNonZero > maxNoNonZero)
-        {
-            maxNoNonZero = tmpNoNonZero;
-        }
-    }
-    return maxNoNonZero;
 }

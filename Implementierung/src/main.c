@@ -3,6 +3,8 @@
 #include <getopt.h>
 #include <stdbool.h>
 #include <linux/time.h>
+#include <errno.h>
+#include <string.h>
 
 #include "ellpack.h"
 #include "matrix_io.h"
@@ -33,6 +35,12 @@ void print_help(const char *progname)
 {
     print_usage(progname);
     fprintf(stdout, "\n%s", help_msg);
+}
+
+void handle_error(const char *message)
+{
+    fprintf(stderr, "%s: %s\n", message, strerror(errno));
+    exit(EXIT_FAILURE);
 }
 
 int main(int argc, char **argv)
@@ -76,23 +84,34 @@ int main(int argc, char **argv)
             break;
         default:
             print_usage(progname);
-            exit(EXIT_FAILURE);
+            handle_error("Wrong format: look at Help Message (Usage)");
         }
     }
 
     if (!input_file_a || !input_file_b || !output_file)
     {
-        fprintf(stderr, "Wrong input/output formatting: Input and output files must be specified.\n");
-        exit(EXIT_FAILURE);
+        handle_error("Error: Wrong input/output formatting: Input and output files must be specified");
     }
 
-    ELLPACKMatrix matrix_a, matrix_b, result;
-    read_matrix(input_file_a, &matrix_a);
-    read_matrix(input_file_b, &matrix_b);
+    ELLPACKMatrix matrix_a = {0}, matrix_b = {0}, result = {0};
+
+    if (read_matrix(input_file_a, &matrix_a) != 0)
+    {
+        handle_error("Error reading input matrix A");
+    }
+
+    if (read_matrix(input_file_b, &matrix_b) !=0)
+    {
+        handle_error("Error reading input matrix B");
+    }
 
     // start clock
     struct timespec start;
-    clock_gettime(CLOCK_MONOTONIC, &start);
+    if (clock_gettime(CLOCK_MONOTONIC, &start) != 0)
+    {
+        handle_error("Error getting start time");
+    }
+
     // ensure one second between time measurement
     sleep(1);
 
@@ -107,14 +126,22 @@ int main(int argc, char **argv)
     case 2:
         matr_mult_ellpack_V2(&matrix_a, &matrix_b, &result);
         break;
+    case 3:
+        matr_mult_ellpack_V3(&matrix_a, &matrix_b, &result);
+        break;
+    case 4:
+        matr_mult_ellpack_V4(&matrix_a, &matrix_b, &result);
+        break;
     default:
-        fprintf(stderr, "Unknown version specified.\n");
-        exit(EXIT_FAILURE);
+        handle_error("Unknown version specified");
     }
 
     // stop clock
     struct timespec end;
-    clock_gettime(CLOCK_MONOTONIC, &end);
+    if (clock_gettime(CLOCK_MONOTONIC, &end) != 0)
+    {
+        handle_error("Error getting end time");
+    }
 
     double time = end.tv_sec - start.tv_sec + 1e-9 * (end.tv_nsec - start.tv_nsec);
 
@@ -125,7 +152,10 @@ int main(int argc, char **argv)
 
     uint64_t new_noNonZero = compute_noNonZero(&result);
 
-    write_matrix(output_file, &result, new_noNonZero);
+    if (write_matrix(output_file, &result, new_noNonZero) != 0)
+    {
+        handle_error("Error writing output matrix");
+    }
 
     free(matrix_a.values);
     free(matrix_a.indices);
@@ -136,3 +166,4 @@ int main(int argc, char **argv)
 
     return EXIT_SUCCESS;
 }
+
