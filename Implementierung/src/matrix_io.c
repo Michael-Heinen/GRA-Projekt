@@ -65,32 +65,35 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
     file_pos_scan = ftell(file);
     fseek(file, file_pos_gets, SEEK_SET);
 
-    //line 2
-    if (!fgets(line, sizeof(line), file)) {
-        fprintf(stderr, "Error reading matrix dimensions\n");
-        fclose(file);
-        return -1;
-    }
 
-    if (count_numbers_in_line(line) != (int)(matrix->noRows * matrix->noNonZero))
+    if (matrix->noNonZero != 0)
     {
-        fprintf(stderr, "Wrong Number in line 2.\n");
-        return -1;
-    }
+        //line 2
+        if (!fgets(line, sizeof(line), file)) {
+            fprintf(stderr, "Error reading matrix dimensions\n");
+            fclose(file);
+            return -1;
+        }
 
-    //line 3
-    if (!fgets(line, sizeof(line), file)) {
-        fprintf(stderr, "Error reading matrix dimensions\n");
-        fclose(file);
-        return -1;
-    }
+        if (count_numbers_in_line(line) != (int)(matrix->noRows * matrix->noNonZero))
+        {
+            fprintf(stderr, "Wrong Number in line 2.\n");
+            return -1;
+        }
 
-    if (count_numbers_in_line(line) != (int)(matrix->noRows * matrix->noNonZero))
-    {
-        fprintf(stderr, "Wrong Number in line 3.\n");
-        return -1;
-    }
+        //line 3
+        if (!fgets(line, sizeof(line), file)) {
+            fprintf(stderr, "Error reading matrix dimensions\n");
+            fclose(file);
+            return -1;
+        }
 
+        if (count_numbers_in_line(line) != (int)(matrix->noRows * matrix->noNonZero))
+        {
+            fprintf(stderr, "Wrong Number in line 3.\n");
+            return -1;
+        }
+    }
     fseek(file, file_pos_scan, SEEK_SET);
 
     matrix->values = (float *)malloc(matrix->noRows * matrix->noNonZero * sizeof(float));
