@@ -19,7 +19,9 @@ void matr_mult_ellpack_V2(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPAC
 
     if (!result->values || !result->indices)
     {
-        fprintf(stderr, "Memory allocation failed (matr_mult_V2 (V2))\n");
+        free(result->values);
+        free(result->indices);
+        fprintf(stderr, "Memory allocation failed (matr_mult_ellpack_V2 (V2))\n");
         exit(EXIT_FAILURE);
     }
 

@@ -19,6 +19,14 @@ void matr_mult_ellpack_V4(const ELLPACKMatrix *restrict a, const ELLPACKMatrix *
     result->values = (float *)calloc(result->noRows * result->noNonZero, sizeof(float));
     result->indices = (uint64_t *)calloc(result->noRows * result->noNonZero, sizeof(uint64_t));
 
+    if (!result->values || !result->indices)
+    {
+        free(result->values);
+        free(result->indices);
+        fprintf(stderr, "Memory allocation failed (matr_mult_ellpack_V4 (V4))\n");
+        exit(EXIT_FAILURE);
+    }
+
     if (a->noNonZero == 0 || b->noNonZero == 0)
     {
         result->noNonZero = 0;

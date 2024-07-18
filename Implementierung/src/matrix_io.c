@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
+#include <stdbool.h>
 // #include <stdint.h>
 
 int read_matrix(const char *filename, ELLPACKMatrix *matrix)
@@ -15,7 +16,28 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
 
     if (fscanf(file, "%" SCNu64 ",%" SCNu64 ",%" SCNu64, &matrix->noRows, &matrix->noCols, &matrix->noNonZero) != 3)
     {
-        fprintf(stderr, "Error reading matrix dimensions from file %s\n", filename);
+        fprintf(stderr, "Error reading matrix dimensions. Filename: %s\n", filename);
+        fclose(file);
+        return -1;
+    }
+
+    if (matrix->noRows == 0 || matrix->noCols == 0)
+    {
+        fprintf(stderr, "Error: Rows or Cols equals 0. Filename: %s\n", filename);
+        fclose(file);
+        return -1;
+    }
+
+    if (matrix->noRows > INT64_MAX || matrix->noCols > INT64_MAX || matrix->noNonZero > INT64_MAX)
+    {
+        fprintf(stderr, "Error: Matrix dimensions exceed maximum allowed value. Filename: %s\n", filename);
+        fclose(file);
+        return -1;
+    }
+
+    if (matrix->noRows < matrix->noNonZero)
+    {
+        fprintf(stderr, "Error: noNonZero larger then noRows. Rows: %ld, noNonZero: %ld. Filename: %s\n", matrix->noRows, matrix->noNonZero, filename);
         fclose(file);
         return -1;
     }
@@ -25,9 +47,7 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
 
     if (!matrix->values || !matrix->indices)
     {
-        fprintf(stderr, "Memory allocation failed\n");
-        free(matrix->values);
-        free(matrix->indices);
+        fprintf(stderr, "Memory allocation failed. Filename: %s\n", filename);
         fclose(file);
         return -1;
     }
@@ -38,8 +58,6 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
         if (fscanf(file, " %c", &ch) != 1)
         {
             fprintf(stderr, "Error reading values from file %s\n", filename);
-            free(matrix->values);
-            free(matrix->indices);
             fclose(file);
             return -1;
         }
@@ -55,8 +73,6 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
             ungetc(ch, file); // Put back the character if it's not '*'
             if (fscanf(file, "%f,", &matrix->values[i]) != 1) {
                 fprintf(stderr, "Error reading value from file %s\n", filename);
-                free(matrix->values);
-                free(matrix->indices);
                 fclose(file);
                 return -1;
             }
@@ -68,8 +84,6 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
         if (fscanf(file, " %c", &ch) != 1)
         {
             fprintf(stderr, "Error reading indices from file %s\n", filename);
-            free(matrix->values);
-            free(matrix->indices);
             fclose(file);
             return -1;
         }
@@ -86,8 +100,6 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
             if (fscanf(file, "%" SCNu64 ",", &matrix->indices[i]) != 1)
             {
                 fprintf(stderr, "Error reading index from file %s\n", filename);
-                free(matrix->values);
-                free(matrix->indices);
                 fclose(file);
                 return -1;
             }
@@ -152,7 +164,6 @@ int write_matrix(const char *filename, const ELLPACKMatrix *matrix, uint64_t new
     return 0;
 }
 
-
 // compute noNonZero in result matrix
 int compute_noNonZero(ELLPACKMatrix *matrix)
 {
@@ -174,4 +185,41 @@ int compute_noNonZero(ELLPACKMatrix *matrix)
         }
     }
     return maxNoNonZero;
+}
+
+
+int control_indices(const char *filename, const ELLPACKMatrix *matrix)
+{
+    for (uint64_t i = 0; i < matrix->noCols; i++)
+    {
+        bool* temp_array = (bool *)calloc(matrix->noRows, sizeof(bool));
+        bool secondZero = false;
+            for(uint64_t j = 0; j < matrix->noNonZero; j++)
+            {
+                if (temp_array[matrix->indices[i * matrix->noNonZero + j]] && matrix->indices[i * matrix->noNonZero + j] != 0 || secondZero && matrix->indices[i * matrix->noNonZero + j] != 0)
+                {
+                    fprintf(stderr,"Error: Double indices in Rows.\n", filename);
+                    return -1;
+                }
+                else if (matrix->indices[i * matrix->noNonZero + j] >= matrix->noRows)
+                {
+                    fprintf(stderr,"Error: Index larger then Rows (Index out of Bound). Filename: %s\n", filename);
+                    return -1;
+                }
+                else
+                {
+                    if(matrix->indices[i* matrix->noNonZero + j] == 0 && temp_array[matrix->indices[i*matrix->noNonZero + j]])
+                    {
+                        secondZero = true;
+                    }
+                    else
+                    {
+                        temp_array[matrix->indices[i * matrix->noNonZero + j]] = true;
+                    }
+                }
+            }
+        free(temp_array);
+    }
+
+    return 0;
 }
