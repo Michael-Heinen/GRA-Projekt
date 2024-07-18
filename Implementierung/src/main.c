@@ -121,12 +121,12 @@ int main(int argc, char **argv)
         handle_error("Reading input matrix B", &matrix_a, &matrix_b, NULL);
     }
 
-    if (control_Indices(input_file_a, &matrix_a) !=0)
+    if (control_indices(input_file_a, &matrix_a) !=0)
     {
         handle_error("in control_doubleIndices_inputs (A)", &matrix_a, &matrix_b, NULL);
     }
 
-    if (control_Indices(input_file_b, &matrix_b) !=0)
+    if (control_indices(input_file_b, &matrix_b) !=0)
     {
         handle_error("in control_doubleIndices_inputs (B)", &matrix_a, &matrix_b, NULL);
     }

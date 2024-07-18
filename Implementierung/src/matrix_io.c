@@ -14,6 +14,27 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
         return -1;
     }
 
+    //char line[(INT64_MAX-1)*(INT64_MAX-1)];
+    char line[65000];
+    long file_pos_gets;
+    long file_pos_scan;
+
+    //line 1
+    if (!fgets(line, sizeof(line), file)) {
+        fprintf(stderr, "Error reading matrix dimensions\n");
+        fclose(file);
+        return -1;
+    }
+
+    if (count_numbers_in_line(&line) != 3)
+    {
+        fprintf(stderr, "Wrong Number in line 1.\n");
+        return -1;
+    }
+
+    file_pos_gets = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
     if (fscanf(file, "%" SCNu64 ",%" SCNu64 ",%" SCNu64, &matrix->noRows, &matrix->noCols, &matrix->noNonZero) != 3)
     {
         fprintf(stderr, "Error reading matrix dimensions. Filename: %s\n", filename);
@@ -41,6 +62,36 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
         fclose(file);
         return -1;
     }
+    file_pos_scan = ftell(file);
+    fseek(file, file_pos_gets, SEEK_SET);
+
+    //line 2
+    if (!fgets(line, sizeof(line), file)) {
+        fprintf(stderr, "Error reading matrix dimensions\n");
+        fclose(file);
+        return -1;
+    }
+
+    if (count_numbers_in_line(line) != (int)(matrix->noRows * matrix->noNonZero))
+    {
+        fprintf(stderr, "Wrong Number in line 2.\n");
+        return -1;
+    }
+
+    //line 3
+    if (!fgets(line, sizeof(line), file)) {
+        fprintf(stderr, "Error reading matrix dimensions\n");
+        fclose(file);
+        return -1;
+    }
+
+    if (count_numbers_in_line(line) != (int)(matrix->noRows * matrix->noNonZero))
+    {
+        fprintf(stderr, "Wrong Number in line 3.\n");
+        return -1;
+    }
+
+    fseek(file, file_pos_scan, SEEK_SET);
 
     matrix->values = (float *)malloc(matrix->noRows * matrix->noNonZero * sizeof(float));
     matrix->indices = (uint64_t *)malloc(matrix->noRows * matrix->noNonZero * sizeof(uint64_t));
@@ -187,6 +238,17 @@ int compute_noNonZero(ELLPACKMatrix *matrix)
     return maxNoNonZero;
 }
 
+int count_numbers_in_line(const char *line) {
+
+    int count = 0;
+    char *token = strtok(line, ",");
+    while (token != NULL) {
+        count++;
+        token = strtok(NULL, ",");
+    }
+
+    return count;
+}
 
 int control_indices(const char *filename, const ELLPACKMatrix *matrix)
 {
