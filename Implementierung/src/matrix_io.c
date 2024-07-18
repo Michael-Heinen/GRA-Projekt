@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <stdbool.h>
+#include <sys/types.h>
 // #include <stdint.h>
 
 int read_matrix(const char *filename, ELLPACKMatrix *matrix)
@@ -14,21 +15,25 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
         return -1;
     }
 
-    //char line[(INT64_MAX-1)*(INT64_MAX-1)];
-    char line[65000];
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t read;
     long file_pos_gets;
     long file_pos_scan;
 
     //line 1
-    if (!fgets(line, sizeof(line), file)) {
-        fprintf(stderr, "Error reading matrix dimensions\n");
+    if ((read = getline(&line, &len, file)) == -1) {
+        fprintf(stderr, "Error reading line 1 (dimension).\n");
+        free(line);
         fclose(file);
         return -1;
     }
 
-    if (count_numbers_in_line(&line) != 3)
+    if (count_numbers_in_line(line) != 3)
     {
-        fprintf(stderr, "Wrong Number in line 1.\n");
+        fprintf(stderr, "Wrong Number in line 1 (dimension).\n");
+        free(line);
+        fclose(file);
         return -1;
     }
 
@@ -38,6 +43,7 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
     if (fscanf(file, "%" SCNu64 ",%" SCNu64 ",%" SCNu64, &matrix->noRows, &matrix->noCols, &matrix->noNonZero) != 3)
     {
         fprintf(stderr, "Error reading matrix dimensions. Filename: %s\n", filename);
+        free(line);
         fclose(file);
         return -1;
     }
@@ -45,6 +51,7 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
     if (matrix->noRows == 0 || matrix->noCols == 0)
     {
         fprintf(stderr, "Error: Rows or Cols equals 0. Filename: %s\n", filename);
+        free(line);
         fclose(file);
         return -1;
     }
@@ -52,6 +59,7 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
     if (matrix->noRows > INT64_MAX || matrix->noCols > INT64_MAX || matrix->noNonZero > INT64_MAX)
     {
         fprintf(stderr, "Error: Matrix dimensions exceed maximum allowed value. Filename: %s\n", filename);
+        free(line);
         fclose(file);
         return -1;
     }
@@ -59,6 +67,7 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
     if (matrix->noRows < matrix->noNonZero)
     {
         fprintf(stderr, "Error: noNonZero larger then noRows. Rows: %ld, noNonZero: %ld. Filename: %s\n", matrix->noRows, matrix->noNonZero, filename);
+        free(line);
         fclose(file);
         return -1;
     }
@@ -66,34 +75,56 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
     fseek(file, file_pos_gets, SEEK_SET);
 
 
+
     if (matrix->noNonZero != 0)
     {
         //line 2
-        if (!fgets(line, sizeof(line), file)) {
-            fprintf(stderr, "Error reading matrix dimensions\n");
+        if ((read = getline(&line, &len, file)) == -1) {
+            fprintf(stderr, "Error reading line 2 (values).\n");
+            free(line);
             fclose(file);
             return -1;
         }
 
         if (count_numbers_in_line(line) != (int)(matrix->noRows * matrix->noNonZero))
         {
-            fprintf(stderr, "Wrong Number in line 2.\n");
+            fprintf(stderr, "Wrong Number in line 2 (values).\n");
+            free(line);
+            fclose(file);
             return -1;
         }
 
         //line 3
-        if (!fgets(line, sizeof(line), file)) {
-            fprintf(stderr, "Error reading matrix dimensions\n");
+        if ((read = getline(&line, &len, file)) == -1) {
+            fprintf(stderr, "Error reading line 3 (indices).\n");
+            free(line);
             fclose(file);
             return -1;
         }
 
         if (count_numbers_in_line(line) != (int)(matrix->noRows * matrix->noNonZero))
         {
-            fprintf(stderr, "Wrong Number in line 3.\n");
+            fprintf(stderr, "Wrong Number in line 3 (indices).\n");
+            free(line);
+            fclose(file);
             return -1;
         }
     }
+    else if ((read = getline(&line, &len, file)) != -1)
+    {
+        fprintf(stderr, "Error: In the values and indices lines are numbers, but noNonZero = 0.\n");
+        free(line);
+        fclose(file);
+        return -1;
+    }
+    else if ((read = getline(&line, &len, file)) != -1)
+    {
+        fprintf(stderr, "2Error: In the values and indices lines (line 2, line 3) are numbers, but noNonZero == 0.\n");
+        free(line);
+        fclose(file);
+        return -1;
+    }
+
     fseek(file, file_pos_scan, SEEK_SET);
 
     matrix->values = (float *)malloc(matrix->noRows * matrix->noNonZero * sizeof(float));
@@ -102,6 +133,7 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
     if (!matrix->values || !matrix->indices)
     {
         fprintf(stderr, "Memory allocation failed. Filename: %s\n", filename);
+        free(line);
         fclose(file);
         return -1;
     }
@@ -112,6 +144,7 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
         if (fscanf(file, " %c", &ch) != 1)
         {
             fprintf(stderr, "Error reading values from file %s\n", filename);
+            free(line);
             fclose(file);
             return -1;
         }
@@ -122,11 +155,14 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
             if (fscanf(file, "%*c") != 0)
             {
                 fprintf(stderr, "Error skipping the comma (value) %s\n", filename);
+                free(line);
+                fclose(file);
             }
         } else {
             ungetc(ch, file); // Put back the character if it's not '*'
             if (fscanf(file, "%f,", &matrix->values[i]) != 1) {
                 fprintf(stderr, "Error reading value from file %s\n", filename);
+                free(line);
                 fclose(file);
                 return -1;
             }
@@ -138,6 +174,7 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
         if (fscanf(file, " %c", &ch) != 1)
         {
             fprintf(stderr, "Error reading indices from file %s\n", filename);
+            free(line);
             fclose(file);
             return -1;
         }
@@ -148,17 +185,21 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
             if (fscanf(file, "%*c") != 0)
             {
                 fprintf(stderr, "Error skipping the comma (index) %s\n", filename);
+                free(line);
+                fclose(file);
             }
         } else {
             ungetc(ch, file);
             if (fscanf(file, "%" SCNu64 ",", &matrix->indices[i]) != 1)
             {
                 fprintf(stderr, "Error reading index from file %s\n", filename);
+                free(line);
                 fclose(file);
                 return -1;
             }
         }
     }
+    free(line);
     fclose(file);
     return 0;
 }
@@ -242,13 +283,14 @@ int compute_noNonZero(ELLPACKMatrix *matrix)
 }
 
 int count_numbers_in_line(const char *line) {
-
     int count = 0;
     char *token = strtok(line, ",");
+
     while (token != NULL) {
         count++;
         token = strtok(NULL, ",");
     }
+
 
     return count;
 }
