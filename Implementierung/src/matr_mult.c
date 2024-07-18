@@ -60,26 +60,3 @@ void matr_mult_ellpack(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMa
         }
     }
 }
-
-// compute noNonZero in result matrix
-int compute_noNonZero(ELLPACKMatrix *matrix)
-{
-    uint64_t maxNoNonZero = 0;
-    for (uint64_t i = 0; i < matrix->noCols; i++)
-    {
-        uint64_t tmpNoNonZero = 0;
-        for (uint64_t j = 0; j < matrix->noNonZero; j++)
-        {
-            if (matrix->values[i * matrix->noNonZero + j] == 0.0f)
-            {
-                break;
-            }
-            tmpNoNonZero++;
-        }
-        if (tmpNoNonZero > maxNoNonZero)
-        {
-            maxNoNonZero = tmpNoNonZero;
-        }
-    }
-    return maxNoNonZero;
-}

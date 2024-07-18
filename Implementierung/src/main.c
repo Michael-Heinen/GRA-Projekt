@@ -126,6 +126,12 @@ int main(int argc, char **argv)
     case 2:
         matr_mult_ellpack_V2(&matrix_a, &matrix_b, &result);
         break;
+    case 3:
+        matr_mult_ellpack_V3(&matrix_a, &matrix_b, &result);
+        break;
+    case 4:
+        matr_mult_ellpack_V4(&matrix_a, &matrix_b, &result);
+        break;
     default:
         handle_error("Unknown version specified");
     }
