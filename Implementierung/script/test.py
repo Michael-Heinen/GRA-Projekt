@@ -120,6 +120,7 @@ def generate_test_matrices():
             save_matrix_to_file(matrix_b, matrix_b_filename)
             # print(f"Generated: {matrix_a_filename} and {matrix_b_filename}")
 
+# generate edge case matrices
 def generate_edge_case_matrices():
     delete_files_in_directory(EDGE_MATRICES_DIR)
     for case_name, case_params in EDGE_CASES:
@@ -138,28 +139,32 @@ def generate_edge_case_matrices():
             save_matrix_to_file(matrix_b, matrix_b_filename)
             # print(f"Generated: {matrix_a_filename} and {matrix_b_filename}")
 
+# load and clean matrixes for comparison
 def load_and_clean_matrix(filename):
     # Read the entire file content as a single string
     with open(filename, 'r') as f:
-        content = f.read()
-    
-    # Replace '*' with '0'
-    content = content.replace('*', '0') 
-    
-    #Get dimensions
-    lines = content.splitlines()
-    dimensions = lines[0].split(',')
-    rows, cols = int(dimensions[0]), int(dimensions[1])
+        rows, cols, max_nonzeros = map(int, f.readline().strip().split(','))
+        
+        value_lines = [f.readline().strip().split(',')]
+        index_lines = [f.readline().strip().split(',')]
 
-    # lines = itertools.islice(content, 0, max_rows=1)
-    # Load the cleaned content into a NumPy array
-    matrix = np.loadtxt(lines, delimiter=',', skiprows=1, max_rows=1)
+        values = np.zeros((rows, cols))
+        
+        value_row = value_lines[0]
+        index_row = index_lines[0]
+        count = 0
+        row_counter = 0
+        for val, idx in zip(value_row, index_row):
+            if val != "*" and idx != "*":
+                col_index = int(idx)
+                values[row_counter, col_index] = float(val)
+            count += 1
+            if count >= max_nonzeros:
+                count = 0
+                row_counter += 1
 
-    # Reshape the matrix according to the dimensions
-    matrix = matrix.reshape((rows, cols))    
-    # if(TESTING):
-    #     print(f"Cleaned Matrix: \n{matrix}")
-    return matrix
+    return values
+
 
 # Function to run the tests in isolation
 def run_isolated_test(command):
