@@ -14,67 +14,84 @@ void matr_mult_ellpack_V2(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPAC
 
     result->noRows = a->noRows;
     result->noCols = b->noCols;
-    result->noNonZero = a->noNonZero * b->noNonZero;
+    result->noNonZero = b->noCols;
 
     result->values = (float *)calloc(result->noRows * result->noNonZero, sizeof(float));
     result->indices = (uint64_t *)calloc(result->noRows * result->noNonZero, sizeof(uint64_t));
 
-    for (uint64_t i = 0; i < a->noRows; ++i)
+    if (a->noNonZero == 0 || b->noNonZero == 0)
     {
-        for (uint64_t k = 0; k < a->noNonZero; k += 4)
-        {
-            uint64_t a_index = i * a->noNonZero + k;
-            __m128 a_values = _mm_loadu_ps(&a->values[a_index]);
+        result->noNonZero = 0;
+        return;
+    }
 
-            // Check if all elements in a_values are zero, if so, skip to the next iteration
+    // Temporary result arrays for current row
+    float *temp_values = (float *)calloc(result->noCols, sizeof(float));
+    uint64_t *temp_indices = (uint64_t *)calloc(result->noCols, sizeof(uint64_t));
+
+    for (uint64_t curr_a_row = 0; curr_a_row < a->noRows; ++curr_a_row)
+    {
+        for (uint64_t curr_a_nonZero = 0; curr_a_nonZero < a->noNonZero; curr_a_nonZero += 4)
+        {
+            uint64_t a_index = curr_a_row * a->noNonZero + curr_a_nonZero;
+
+            __m128 a_values = _mm_loadu_ps(&a->values[a_index]);
             if (_mm_testz_ps(a_values, a_values))
             {
-                continue;
+                continue; // Skip if all values in the SIMD register are zero
             }
 
             __m128i a_cols = _mm_loadu_si128((__m128i *)&a->indices[a_index]);
 
-            for (uint64_t l = 0; l < b->noNonZero; l += 4)
+            for (uint64_t curr_b_col = 0; curr_b_col < b->noCols; ++curr_b_col)
             {
-                uint64_t b_index = _mm_extract_epi32(a_cols, 0) * b->noNonZero + l;
-                __m128 b_values = _mm_loadu_ps(&b->values[b_index]);
-                __m128i b_cols = _mm_loadu_si128((__m128i *)&b->indices[b_index]);
+                for (uint64_t curr_b_row = 0; curr_b_row < b->noRows; curr_b_row += 4)
+                {
+                    /* code */
+                }
 
+                uint64_t b_base_index = _mm_extract_epi32(a_cols, 0) * b->noNonZero + curr_b_col;
+
+                __m128 b_values = _mm_loadu_ps(&b->values[b_base_index]);
+                if (_mm_testz_ps(b_values, b_values))
+                {
+                    continue; // Skip if all values in the SIMD register are zero
+                }
+
+                __m128i b_cols = _mm_loadu_si128((__m128i *)&b->indices[b_base_index]);
                 __m128 result_values = _mm_mul_ps(a_values, b_values);
 
-                for (int m = 0; m < 4; ++m)
+                for (int i = 0; i < 4; ++i)
                 {
-                    int col_idx = _mm_extract_epi32(b_cols, m);
-                    if (col_idx < 0 || col_idx >= b->noCols)
-                        continue;
-                    uint64_t result_idx = i * result->noNonZero + col_idx;
-
-                    result->values[result_idx] += _mm_cvtss_f32(_mm_shuffle_ps(result_values, result_values, _MM_SHUFFLE(m, m, m, m)));
-                    result->indices[result_idx] = col_idx;
+                    int b_col = _mm_extract_epi32(b_cols, i);
+                    if (b_col >= 0 && b_col < b->noCols)
+                    {
+                        temp_values[b_col] += _mm_cvtss_f32(_mm_shuffle_ps(result_values, result_values, _MM_SHUFFLE(i, i, i, i)));
+                        temp_indices[b_col] = b_col;
+                    }
                 }
             }
         }
-    }
-}
 
-int compute_noNonZero_V2(ELLPACKMatrix *matrix)
-{
-    uint64_t maxNoNonZero = 0;
-    for (uint64_t i = 0; i < matrix->noCols; i++)
-    {
-        uint64_t tmpNoNonZero = 0;
-        for (uint64_t j = 0; j < matrix->noNonZero; j++)
+        // Copy temp arrays into the final array
+        for (uint64_t i = 0; i < result->noCols; ++i)
         {
-            if (matrix->values[i * matrix->noNonZero + j] == 0.0f)
+            if (temp_values[i] != 0.0f)
             {
-                break;
+                uint64_t res_index = curr_a_row * result->noNonZero + i;
+                result->values[res_index] = temp_values[i];
+                result->indices[res_index] = temp_indices[i];
             }
-            tmpNoNonZero++;
         }
-        if (tmpNoNonZero > maxNoNonZero)
+
+        // Reset temp arrays
+        for (uint64_t i = 0; i < result->noCols; ++i)
         {
-            maxNoNonZero = tmpNoNonZero;
+            temp_values[i] = 0.0f;
+            temp_indices[i] = 0;
         }
     }
-    return maxNoNonZero;
+
+    free(temp_values);
+    free(temp_indices);
 }

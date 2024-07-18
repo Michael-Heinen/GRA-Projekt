@@ -4,7 +4,7 @@
 
 
 
-void matr_mult_ellpack_V3(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMatrix *result)
+void matr_mult_ellpack_V4(const ELLPACKMatrix *restrict a, const ELLPACKMatrix *restrict b, ELLPACKMatrix *restrict result)
 {
     if (a->noCols != b->noRows)
     {
@@ -28,7 +28,7 @@ void matr_mult_ellpack_V3(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPAC
     // temporary result arrays for current row
     float *temp_values = (float *)calloc(result->noCols, sizeof(float));
     uint64_t *temp_indices = (uint64_t *)calloc(result->noCols, sizeof(uint64_t));
-    //uint64_t temp_nonZero = 0;
+
 
     for (uint64_t curr_a_row = 0; curr_a_row < a->noRows; ++curr_a_row)
     {
@@ -37,11 +37,14 @@ void matr_mult_ellpack_V3(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPAC
         {
             uint64_t a_index = curr_a_row * a->noNonZero + curr_a_nonZero;
             float a_value = a->values[a_index];
-            if (a_value == 0.0)
+            if (a_value == 0.0f)
             {
                 continue;
             }
             uint64_t a_col = a->indices[a_index];
+
+            __builtin_prefetch(&b->values[a_col * b->noNonZero], 0, 1);
+            __builtin_prefetch(&b->indices[a_col * b->noNonZero], 0, 1);
 
             for (uint64_t curr_b_nonZero = 0; curr_b_nonZero < b->noNonZero; ++curr_b_nonZero)
             {
@@ -55,28 +58,35 @@ void matr_mult_ellpack_V3(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPAC
 
                 temp_values[b_col] += a_value * b_value;
                 temp_indices[b_col] = b_col;
-                //temp_nonZero++;
             }
+            
+            if (curr_a_nonZero + 1 < a->noNonZero)
+            {
+                uint64_t next_a_index = curr_a_row * a->noNonZero + curr_a_nonZero + 1;
+                __builtin_prefetch(&a->values[next_a_index], 0, 1);
+                __builtin_prefetch(&a->indices[next_a_index], 0, 1);
+            }
+
         }
+
+        uint64_t res_index_base = curr_a_row * result->noNonZero;
 
         // copy temp arrays into final array
         for (uint64_t i = 0; i < result->noCols; ++i)
         {
             if (temp_values[i] != 0.0f)
             {
-                uint64_t res_index = curr_a_row * result->noNonZero + i;
-                result->values[res_index] = temp_values[i];
-                result->indices[res_index] = temp_indices[i];
+
+                __builtin_prefetch(&result->values[res_index_base + i], 1, 1);
+                __builtin_prefetch(&result->indices[res_index_base + i], 1, 1);
+
+                result->values[res_index_base + i] = temp_values[i];
+                result->indices[res_index_base + i] = temp_indices[i];
+                temp_values[i] = 0.0f;
+                temp_indices[i] = 0;
             }
         }
 
-        // reset temp arrays
-        for (uint64_t i = 0; i < result->noCols; ++i)
-        {
-            temp_values[i] = 0.0f;
-            temp_indices[i] = 0;
-        }
-        //temp_nonZero = 0;
     }
 
     free(temp_values);
