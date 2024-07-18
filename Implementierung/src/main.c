@@ -55,7 +55,15 @@ void handle_error(const char *message, ELLPACKMatrix *matrix_a, ELLPACKMatrix *m
     free_matrix(matrix_b);
     free_matrix(result);
 
-    fprintf(stderr, "%s: %s\n", message, strerror(errno));
+    if (errno == 0)
+    {
+        fprintf(stderr, "%s\n", message);
+    }
+    else
+    {
+        fprintf(stderr, "%s: Errno: %s\n", message, strerror(errno));
+    }
+
     exit(EXIT_FAILURE);
 }
 
@@ -113,12 +121,12 @@ int main(int argc, char **argv)
 
     if (read_matrix(input_file_a, &matrix_a) != 0)
     {
-        handle_error("Reading input matrix A", &matrix_a, NULL, NULL);
+        handle_error("Error reading input matrix A", &matrix_a, NULL, NULL);
     }
 
     if (read_matrix(input_file_b, &matrix_b) !=0)
     {
-        handle_error("Reading input matrix B", &matrix_a, &matrix_b, NULL);
+        handle_error("Error reading input matrix B", &matrix_a, &matrix_b, NULL);
     }
 
     if (control_indices(input_file_a, &matrix_a) !=0)
