@@ -1,8 +1,7 @@
 import os
 import subprocess
-import time
 import numpy as np
-import itertools
+import cupy as cp
 import matplotlib.pyplot as plt
 import argparse
 
@@ -95,7 +94,7 @@ def delete_files_in_directory(directory_path):
             file_path = os.path.join(directory_path, file)
             if os.path.isfile(file_path):
                 os.remove(file_path)
-        print("All files deleted successfully.")
+        print(f"All files in {directory_path} deleted successfully.")
     except OSError:
         print("Error occurred while deleting files.")
 
@@ -119,6 +118,7 @@ def generate_test_matrices():
             save_matrix_to_file(matrix_b, matrix_b_filename)
             # print(f"Generated: {matrix_a_filename} and {matrix_b_filename}")
 
+# generate edge case matrices
 def generate_edge_case_matrices():
     delete_files_in_directory(EDGE_MATRICES_DIR)
     for case_name, case_params in EDGE_CASES:
@@ -137,6 +137,7 @@ def generate_edge_case_matrices():
             save_matrix_to_file(matrix_b, matrix_b_filename)
             # print(f"Generated: {matrix_a_filename} and {matrix_b_filename}")
 
+# load and clean matrixes for comparison
 def load_and_clean_matrix(filename):
     with open(filename, 'r') as f:
         rows, cols, max_nonzeros = map(int, f.readline().strip().split(','))
@@ -144,7 +145,6 @@ def load_and_clean_matrix(filename):
         value_lines = [f.readline().strip().split(',')]
         index_lines = [f.readline().strip().split(',')]
 
-        # print(f"rows: {rows}, cols: {cols}, max_nonzero: {max_nonzeros}")
         values = np.zeros((rows, cols))
         
         value_row = value_lines[0]
@@ -164,30 +164,46 @@ def load_and_clean_matrix(filename):
 
 
 # Function to run the tests in isolation
-def run_isolated_test(command):
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=BASE_DIR)
-    stdout, stderr = process.communicate()
-    return process.returncode, stdout, stderr
+def run_isolated_test(command, timeout):
+    try:
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=BASE_DIR)
+        stdout, stderr = process.communicate(timeout=timeout)
+        return process.returncode, stdout, stderr, False
+    except subprocess.TimeoutExpired:
+        process.kill()
+        stdout, stderr = process.communicate()
+        return -1, stdout, stderr, True
+
 
 # Function to run the tests
-def run_tests(num_runs):
+def run_tests(num_runs, timeout=60):
     performance_results = {impl: [] for impl in IMPLEMENTATIONS}
+    timed_out_versions = set()
+
     for size in MATRIX_SIZES:
         matrix_a_filename = os.path.join(TEST_MATRICES_DIR, f"matrixA_{size}x{size}.txt")
         matrix_b_filename = os.path.join(TEST_MATRICES_DIR, f"matrixB_{size}x{size}.txt")
         
         for impl in IMPLEMENTATIONS:
+            if impl in timed_out_versions:
+                continue
+            
             print(f"\nTesting V{impl} with matrix size {size}x{size}")
             execution_times = []
             
             for i in range(num_runs):  # Run each test three times
                 try:
                     command = [os.path.join(BASE_DIR, "main"), f"-V {impl}", "-B", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-o{os.path.join(RESULTS_DIR, f'result_V{impl}_{size}x{size}.txt')}"]
-                    returncode, stdout, stderr = run_isolated_test(command)
+                    returncode, stdout, stderr, timed_out = run_isolated_test(command, timeout)
+                    if timed_out:
+                        print(f"Run {i+1} for V{impl} timed out.")
+                        timed_out_versions.add(impl)
+                        break  # Skip further runs for this implementation
                     if returncode == 0:
                         execution_time = parse_execution_time(stdout.decode())
                         if execution_time is not None:
                             execution_times.append(execution_time)
+
                         else:
                             print("Failed to parse execution time from the output.")
                     else:
@@ -201,14 +217,17 @@ def run_tests(num_runs):
                 performance_results[impl].append(avg_time)
                 
                 # Check correctness with matrixmultiplication module of numpy
-                mathmul = np.matmul(load_and_clean_matrix(matrix_a_filename), load_and_clean_matrix(matrix_b_filename))                
+                if GPU:
+                    mathmul = cp.matmul(load_and_clean_matrix(matrix_a_filename), load_and_clean_matrix(matrix_b_filename))                
+                else:
+                    mathmul = np.matmul(load_and_clean_matrix(matrix_a_filename), load_and_clean_matrix(matrix_b_filename))                               
+
                 if returncode == 0 and compare_matrices(os.path.join(RESULTS_DIR, f"result_V{impl}_{size}x{size}.txt"), mathmul):
                     print(f"Output correctness: PASSED")
                 else:
                     print(f"Output correctness: FAILED")
 
-    # Plot performance results
-    plot_performance_results(performance_results)
+    return performance_results       
 
 # Function to run edge case tests
 def run_edge_case_tests():
@@ -229,61 +248,80 @@ def run_edge_case_tests():
                 print(f"Edge case '{case_name}' Execution error: {e}")
 
 # Function to plot performance results
-def plot_performance_results(performance_results):
-    plt.figure(figsize=(12, 8))
-    for impl in IMPLEMENTATIONS:
-        # Filter out None values for plotting
-        sizes = []
-        times = []
-        for size, time in zip(MATRIX_SIZES, performance_results[impl]):
-            if time is not None:
-                sizes.append(size)
-                times.append(time)
-        if sizes and times:  # Ensure there's data to plot
-            plt.plot(sizes, times, marker='o', label=impl)
+def plot_performance_results(performance_results, densities):
+    num_densities = len(densities)
+    fig, axes = plt.subplots(num_densities, 1, figsize=(12, 8), sharex=True)
     
-    plt.xlabel('Matrix Size (NxM)')
-    plt.ylabel('Average Execution Time (seconds)')
-    plt.title('Performance Comparison of Matrix Multiplication Implementations')
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(os.path.join(SCRIPT_DIR, 'performance_comparison.png'))
+    if num_densities == 1:
+        axes = [axes]
+    
+    for i, density in enumerate(densities):
+        ax = axes[i]
+        for impl in IMPLEMENTATIONS:
+            # Filter out None values for plotting
+            sizes = []
+            times = []
+            for size, time in zip(MATRIX_SIZES, performance_results[i][impl]):
+                if time is not None:
+                    sizes.append(size)
+                    times.append(time)
+            if sizes and times:  # Ensure there's data to plot
+                ax.plot(sizes, times, marker='o', label=f"V:{impl}")
+        
+        ax.set_ylabel('Execution Time (s)')
+        ax.set_title(f'Density: {density}')
+        ax.grid(True)
+        ax.legend()
+
+    axes[-1].set_xlabel('Matrix Size ((NxM)/2)')
+    plt.suptitle('Performance Comparison of Matrix Multiplication Implementations')
+    plt.savefig(os.path.join(SCRIPT_DIR, f'performance_comparison.png'))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Matrix Multiplication Performance Testing')
-    parser.add_argument('-v','--versions', type=int, nargs='+', default=[2], help='Versions to test')
-    parser.add_argument('-d','--density', type=float, default=0.5, help='Density of the matrices')
-    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[256, 512], help='List of matrix sizes')
+    parser.add_argument('-V','--versions', type=int, nargs='+', default=[0, 3, 4], help='Versions to test')
+    parser.add_argument('-d','--density', type=float, nargs='+', default=[0.2, 0.5, 0.8], help='Density of the matrices')
+    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[8, 16, 32, 64, 128, 256, 512,750, 1024, 1535 , 2048, 3064, 4096, 6095, 8192], help='List of matrix sizes')
     parser.add_argument('-n','--num_runs', type=int, default=1, help='Number of runs for each test')
+    parser.add_argument('-tmo','--timeout', type=int, default=60, help='Timeout for each test in seconds')
 
     parser.add_argument('-c', '--compile', action='store_false', help='Does NOT Compile the implementations')
-    parser.add_argument('-g', '--generate', action='store_true', help='Generate test matrices')
+    parser.add_argument('-g', '--generate', action='store_false', help='Do NOT generate test matrices')
     parser.add_argument('-e', '--edge', action='store_true', help='Test edge case matrices')
     
     parser.add_argument('-p', '--plot', action='store_false', help='Does NOT Plot performance results')
     parser.add_argument('-t', '--testing', action='store_true', help='Print Testing output')
+    parser.add_argument('-gpu', '--gpu', action='store_true', help='Using GPU for Comparing Matrix Mul')
 
     args = parser.parse_args()
     
     MATRIX_SIZES = args.matrix_sizes
-    DENSITY = args.density
     IMPLEMENTATIONS = args.versions
     TESTING = args.testing
+    GPU = args.gpu
 
+    delete_files_in_directory(RESULTS_DIR)
+    delete_files_in_directory(EXPECTED_DIR)
 
     # Compile the implementations
     if args.compile:
         compile_implementations()
 
-    # Generate test matrices if needed
-    if args.generate:
-        generate_test_matrices()
-        if(args.edge):
-            generate_edge_case_matrices()
-
-    # Run matrix tests
-    run_tests(args.num_runs)
+    performances = []
+    for density in args.density:
+        DENSITY = density
+        # Generate test matrices if needed
+        if args.generate:
+            generate_test_matrices()
+        # Run matrix tests
+        perf = run_tests(args.num_runs, args.timeout)
+        performances.append(perf)
+    
+    if args.plot:
+        # Plot performance results
+        plot_performance_results(performances, args.density)
     
     # Run edge case tests
     if(args.edge):
+        generate_edge_case_matrices()
         run_edge_case_tests()

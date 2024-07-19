@@ -2,8 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
-
 void matr_mult_ellpack_V4(const ELLPACKMatrix *restrict a, const ELLPACKMatrix *restrict b, ELLPACKMatrix *restrict result)
 {
     if (a->noCols != b->noRows)
@@ -37,7 +35,6 @@ void matr_mult_ellpack_V4(const ELLPACKMatrix *restrict a, const ELLPACKMatrix *
     float *temp_values = (float *)calloc(result->noCols, sizeof(float));
     uint64_t *temp_indices = (uint64_t *)calloc(result->noCols, sizeof(uint64_t));
 
-
     for (uint64_t curr_a_row = 0; curr_a_row < a->noRows; ++curr_a_row)
     {
 
@@ -67,19 +64,18 @@ void matr_mult_ellpack_V4(const ELLPACKMatrix *restrict a, const ELLPACKMatrix *
                 temp_values[b_col] += a_value * b_value;
                 temp_indices[b_col] = b_col;
             }
-            
+
             if (curr_a_nonZero + 1 < a->noNonZero)
             {
                 uint64_t next_a_index = curr_a_row * a->noNonZero + curr_a_nonZero + 1;
                 __builtin_prefetch(&a->values[next_a_index], 0, 1);
                 __builtin_prefetch(&a->indices[next_a_index], 0, 1);
             }
-
         }
 
-        uint64_t res_index_base = curr_a_row * result->noNonZero;
-
         // copy temp arrays into final array
+        uint64_t cnt_zero = 0;
+        uint64_t res_index_base = curr_a_row * result->noNonZero;
         for (uint64_t i = 0; i < result->noCols; ++i)
         {
             if (temp_values[i] != 0.0f)
@@ -88,13 +84,14 @@ void matr_mult_ellpack_V4(const ELLPACKMatrix *restrict a, const ELLPACKMatrix *
                 __builtin_prefetch(&result->values[res_index_base + i], 1, 1);
                 __builtin_prefetch(&result->indices[res_index_base + i], 1, 1);
 
-                result->values[res_index_base + i] = temp_values[i];
-                result->indices[res_index_base + i] = temp_indices[i];
+                result->values[res_index_base + i - cnt_zero] = temp_values[i];
+                result->indices[res_index_base + i - cnt_zero] = temp_indices[i];
                 temp_values[i] = 0.0f;
                 temp_indices[i] = 0;
+                continue;
             }
+            cnt_zero++;
         }
-
     }
 
     free(temp_values);
