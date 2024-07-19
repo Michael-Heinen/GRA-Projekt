@@ -58,7 +58,10 @@ def save_matrix_to_file(matrix, filename):
             filtered_values = [v for v in row_values if v != "*"][:max_nonzeros]
             filtered_values.extend(["*"] * (max_nonzeros - len(filtered_values)))
             row_lines.append(",".join(filtered_values))
-        f.write(",".join(row_lines) + "\n")
+
+        if(len(row_lines) != 0):
+            f.write(",".join(row_lines))
+        f.write("\n")
         
         index_lines = []
         for row in matrix:
@@ -66,7 +69,10 @@ def save_matrix_to_file(matrix, filename):
             filtered_indices = [idx for idx in row_indices if idx != "*"][:max_nonzeros]
             filtered_indices.extend(["*"] * (max_nonzeros - len(filtered_indices)))
             index_lines.append(",".join(filtered_indices))
-        f.write(",".join(index_lines) + "\n")
+        
+        if(len(row_lines) != 0):
+            f.write(",".join(index_lines))
+    
 # Function to compare matrices
 def compare_matrices(file1, matrix2):
     try:
@@ -151,14 +157,17 @@ def load_and_clean_matrix(filename):
         index_row = index_lines[0]
         count = 0
         row_counter = 0
-        for val, idx in zip(value_row, index_row):
-            if val != "*" and idx != "*":
-                col_index = int(idx)
-                values[row_counter, col_index] = float(val)
-            count += 1
-            if count >= max_nonzeros:
-                count = 0
-                row_counter += 1
+        try:
+            for val, idx in zip(value_row, index_row):
+                if val != "*" and idx != "*":
+                    col_index = int(idx)
+                    values[row_counter, col_index] = float(val)
+                count += 1
+                if count >= max_nonzeros:
+                    count = 0
+                    row_counter += 1
+        except ValueError as e:
+            return values
 
     return values
 
@@ -216,16 +225,17 @@ def run_tests(num_runs, timeout=60):
                 print(f"Average Execution Time for V{impl} with matrix size {size}x{size}: {avg_time:.6f} seconds")
                 performance_results[impl].append(avg_time)
                 
-                # Check correctness with matrixmultiplication module of numpy
-                if GPU:
-                    mathmul = cp.matmul(load_and_clean_matrix(matrix_a_filename), load_and_clean_matrix(matrix_b_filename))                
-                else:
-                    mathmul = np.matmul(load_and_clean_matrix(matrix_a_filename), load_and_clean_matrix(matrix_b_filename))                               
+                if COMPARE:
+                    # Check correctness with matrixmultiplication module of numpy
+                    if GPU:
+                        mathmul = cp.matmul(load_and_clean_matrix(matrix_a_filename), load_and_clean_matrix(matrix_b_filename))                
+                    else:
+                        mathmul = np.matmul(load_and_clean_matrix(matrix_a_filename), load_and_clean_matrix(matrix_b_filename))                               
 
-                if returncode == 0 and compare_matrices(os.path.join(RESULTS_DIR, f"result_V{impl}_{size}x{size}.txt"), mathmul):
-                    print(f"Output correctness: PASSED")
-                else:
-                    print(f"Output correctness: FAILED")
+                    if returncode == 0 and compare_matrices(os.path.join(RESULTS_DIR, f"result_V{impl}_{size}x{size}.txt"), mathmul):
+                        print(f"Output correctness: PASSED")
+                    else:
+                        print(f"Output correctness: FAILED")
 
     return performance_results       
 
@@ -292,6 +302,7 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--plot', action='store_false', help='Does NOT Plot performance results')
     parser.add_argument('-t', '--testing', action='store_true', help='Print Testing output')
     parser.add_argument('-gpu', '--gpu', action='store_true', help='Using GPU for Comparing Matrix Mul')
+    parser.add_argument('-comp', '--compare', action='store_true', help='Comparing with numpy matrix multiplication')
 
     args = parser.parse_args()
     
@@ -299,6 +310,7 @@ if __name__ == "__main__":
     IMPLEMENTATIONS = args.versions
     TESTING = args.testing
     GPU = args.gpu
+    COMPARE = args.compare
 
     delete_files_in_directory(RESULTS_DIR)
     delete_files_in_directory(EXPECTED_DIR)
