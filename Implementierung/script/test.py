@@ -164,30 +164,46 @@ def load_and_clean_matrix(filename):
 
 
 # Function to run the tests in isolation
-def run_isolated_test(command):
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=BASE_DIR)
-    stdout, stderr = process.communicate()
-    return process.returncode, stdout, stderr
+def run_isolated_test(command, timeout):
+    try:
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=BASE_DIR)
+        stdout, stderr = process.communicate(timeout=timeout)
+        return process.returncode, stdout, stderr, False
+    except subprocess.TimeoutExpired:
+        process.kill()
+        stdout, stderr = process.communicate()
+        return -1, stdout, stderr, True
+
 
 # Function to run the tests
-def run_tests(num_runs):
+def run_tests(num_runs, timeout=60):
     performance_results = {impl: [] for impl in IMPLEMENTATIONS}
+    timed_out_versions = set()
+
     for size in MATRIX_SIZES:
         matrix_a_filename = os.path.join(TEST_MATRICES_DIR, f"matrixA_{size}x{size}.txt")
         matrix_b_filename = os.path.join(TEST_MATRICES_DIR, f"matrixB_{size}x{size}.txt")
         
         for impl in IMPLEMENTATIONS:
+            if impl in timed_out_versions:
+                continue
+            
             print(f"\nTesting V{impl} with matrix size {size}x{size}")
             execution_times = []
             
             for i in range(num_runs):  # Run each test three times
                 try:
                     command = [os.path.join(BASE_DIR, "main"), f"-V {impl}", "-B", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-o{os.path.join(RESULTS_DIR, f'result_V{impl}_{size}x{size}.txt')}"]
-                    returncode, stdout, stderr = run_isolated_test(command)
+                    returncode, stdout, stderr, timed_out = run_isolated_test(command, timeout)
+                    if timed_out:
+                        print(f"Run {i+1} for V{impl} timed out.")
+                        timed_out_versions.add(impl)
+                        break  # Skip further runs for this implementation
                     if returncode == 0:
                         execution_time = parse_execution_time(stdout.decode())
                         if execution_time is not None:
                             execution_times.append(execution_time)
+
                         else:
                             print("Failed to parse execution time from the output.")
                     else:
@@ -263,13 +279,14 @@ def plot_performance_results(performance_results, densities):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Matrix Multiplication Performance Testing')
-    parser.add_argument('-V','--versions', type=int, nargs='+', default=[2], help='Versions to test')
+    parser.add_argument('-V','--versions', type=int, nargs='+', default=[0, 3, 4], help='Versions to test')
     parser.add_argument('-d','--density', type=float, nargs='+', default=[0.2, 0.5, 0.8], help='Density of the matrices')
-    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[256, 512], help='List of matrix sizes')
+    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[8, 16, 32, 64, 128, 256, 512,750, 1024, 1535 , 2048, 3064, 4096, 6095, 8192], help='List of matrix sizes')
     parser.add_argument('-n','--num_runs', type=int, default=1, help='Number of runs for each test')
+    parser.add_argument('-tmo','--timeout', type=int, default=60, help='Timeout for each test in seconds')
 
     parser.add_argument('-c', '--compile', action='store_false', help='Does NOT Compile the implementations')
-    parser.add_argument('-g', '--generate', action='store_true', help='Generate test matrices')
+    parser.add_argument('-g', '--generate', action='store_false', help='Do NOT generate test matrices')
     parser.add_argument('-e', '--edge', action='store_true', help='Test edge case matrices')
     
     parser.add_argument('-p', '--plot', action='store_false', help='Does NOT Plot performance results')
@@ -297,7 +314,8 @@ if __name__ == "__main__":
         if args.generate:
             generate_test_matrices()
         # Run matrix tests
-        performances.append(run_tests(args.num_runs))
+        perf = run_tests(args.num_runs, args.timeout)
+        performances.append(perf)
     
     if args.plot:
         # Plot performance results
