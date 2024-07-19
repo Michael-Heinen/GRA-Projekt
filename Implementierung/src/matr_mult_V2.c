@@ -3,99 +3,119 @@
 #include <stdlib.h>
 #include <immintrin.h>
 
-void matr_mult_ellpack_V2(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMatrix *result)
+// Function to multiply two matrices in ELLPACK format
+void matr_mult_ellpack_V2(const ELLPACKMatrix *matrixA, const ELLPACKMatrix *matrixB, ELLPACKMatrix *resultMatrix)
 {
-    if (a->noCols != b->noRows)
+    // Check if the number of columns in matrixA is equal to the number of rows in matrixB
+    if (matrixA->noCols != matrixB->noRows)
     {
         fprintf(stderr, "Matrix dimensions do not match for multiplication\n");
         exit(EXIT_FAILURE);
     }
 
-    result->noRows = a->noRows;
-    result->noCols = b->noCols;
-    result->noNonZero = b->noCols;
+    // Initialize the result matrix dimensions and allocate space for values and indices
+    resultMatrix->noRows = matrixA->noRows;
+    resultMatrix->noCols = matrixB->noCols;
+    resultMatrix->noNonZero = matrixB->noCols;
 
-    result->values = (float *)calloc(result->noRows * result->noNonZero, sizeof(float));
-    result->indices = (uint64_t *)calloc(result->noRows * result->noNonZero, sizeof(uint64_t));
+    resultMatrix->values = (float *)calloc(resultMatrix->noRows * resultMatrix->noNonZero, sizeof(float));
+    resultMatrix->indices = (uint64_t *)calloc(resultMatrix->noRows * resultMatrix->noNonZero, sizeof(uint64_t));
 
-    if (a->noNonZero == 0 || b->noNonZero == 0)
+    // If either input matrix has no non-zero elements, the result matrix is empty
+    if (matrixA->noNonZero == 0 || matrixB->noNonZero == 0)
     {
-        result->noNonZero = 0;
+        resultMatrix->noNonZero = 0;
         return;
     }
 
-    // temporary result arrays for current row
-    float *temp_values = (float *)calloc(result->noCols, sizeof(float));
-    uint64_t *temp_indices = (uint64_t *)calloc(result->noCols, sizeof(uint64_t));
-    float *b_temp_values = (float *)calloc(b->noCols, sizeof(float));
-    // uint64_t temp_nonZero = 0;
+    // Allocate temporary arrays to store intermediate results for the current row
+    float *tempValues = (float *)calloc(resultMatrix->noCols, sizeof(float));
+    uint64_t *tempIndices = (uint64_t *)calloc(resultMatrix->noCols, sizeof(uint64_t));
+    float *tempBRowValues = (float *)calloc(matrixB->noCols, sizeof(float));
 
-    for (uint64_t curr_a_row = 0; curr_a_row < a->noRows; ++curr_a_row)
+    // Loop through each row of matrixA
+    for (uint64_t rowA = 0; rowA < matrixA->noRows; ++rowA)
     {
-
-        for (uint64_t curr_a_nonZero = 0; curr_a_nonZero < a->noNonZero; ++curr_a_nonZero)
+        // Reset the temporary arrays for the new row of matrixA
+        for (uint64_t i = 0; i < resultMatrix->noCols; ++i)
         {
-            uint64_t a_index = curr_a_row * a->noNonZero + curr_a_nonZero;
-            __m128 a_values = _mm_set1_ps(a->values[a_index]);
-            // if (_mm_testz_ps(a_values, a_values))
-            // {
-            //     continue; // Skip if all values in the SIMD register are zero
-            // }
-            uint64_t a_col = a->indices[a_index];
-
-            // load b row into temp b array
-            uint64_t b_row_base_index = a_col * b->noNonZero;
-
-            // loop over row of b corresponding to the a_col
-            for (uint64_t b_in = 0; b_in < b->noNonZero; b_in++)
-            {
-                uint64_t cur_b_index = b_row_base_index + b_in;
-                uint64_t b_col = b->indices[cur_b_index];
-                b_temp_values[b_col] = b->values[cur_b_index];
-                temp_indices[b_col] = b_col;
-            }
-
-            // loop over b_temp_array and calculate into temp_array
-            for (uint64_t curr_b_nonZero = 0; curr_b_nonZero < b->noNonZero; curr_b_nonZero += 4)
-            {
-                uint64_t b_index = b_row_base_index + curr_b_nonZero;
-                __m128 b_values = _mm_loadu_ps(&b_temp_values[curr_b_nonZero]);
-                // if (_mm_testz_ps(b_values, b_values))
-                // {
-                //     continue; // Skip if all values in the SIMD register are zero
-                // }
-                __m128 result_simd = _mm_mul_ps(a_values, b_values);
-                __m128 temp_simd = _mm_load_ps(&temp_values[curr_b_nonZero]);
-                temp_simd = _mm_add_ps(result_simd, temp_simd);
-
-                // load back into temp array
-                _mm_store_ps(&b_temp_values[curr_b_nonZero], temp_simd);
-            }
-
-            // copy temp arrays into final array
-            uint64_t cnt_zero = 0;
-            for (uint64_t i = 0; i < result->noCols; ++i)
-            {
-                if (temp_values[i] != 0.0f)
-                {
-                    uint64_t res_index = curr_a_row * result->noNonZero + i - cnt_zero;
-                    result->values[res_index] = temp_values[i];
-                    result->indices[res_index] = temp_indices[i];
-                    continue;
-                }
-                cnt_zero++;
-            }
-
-            // reset temp arrays
-            for (uint64_t i = 0; i < result->noCols; ++i)
-            {
-                temp_values[i] = 0.0f;
-                temp_indices[i] = 0;
-            }
-            // temp_nonZero = 0;
+            tempValues[i] = 0.0f;
+            tempIndices[i] = 0;
         }
 
-        free(temp_values);
-        free(temp_indices);
+        // Loop through each non-zero element in the current row of matrixA
+        for (uint64_t nzIndexA = 0; nzIndexA < matrixA->noNonZero; ++nzIndexA)
+        {
+            // Calculate the index of the current non-zero element in matrixA
+            uint64_t indexA = rowA * matrixA->noNonZero + nzIndexA;
+            // Load the current value from matrixA into a SIMD register and broadcast it
+            __m128 simdValueA = _mm_set1_ps(matrixA->values[indexA]);
+            // Get the column index from the current non-zero element in matrixA
+            uint64_t colA = matrixA->indices[indexA];
+
+            // Calculate the base index of the row in matrixB corresponding to the column index in matrixA
+            uint64_t baseIndexB = colA * matrixB->noNonZero;
+
+            // Loop through each non-zero element in the current row of matrixB
+            for (uint64_t nzIndexB = 0; nzIndexB < matrixB->noNonZero; ++nzIndexB)
+            {
+                // Calculate the index of the current non-zero element in matrixB
+                uint64_t indexB = baseIndexB + nzIndexB;
+                // Get the column index and value from the current non-zero element in matrixB
+                uint64_t colB = matrixB->indices[indexB];
+                // Store the value in the temporary B row array
+                uint64_t valB = matrixB->values[indexB];
+                tempBRowValues[colB] += matrixB->values[indexB];
+                // Store the column index in the temporary indices array
+                tempIndices[colB] = colB;
+            }
+
+            // Loop through the temporary B row array in chunks of 4 elements (SIMD width)
+            for (uint64_t colB = 0; colB < (matrixB->noCols - (matrixB->noCols % 4)); colB += 4)
+            {
+                // Load 4 values from the temporary B row array into a SIMD register
+                __m128 simdValuesB = _mm_loadu_ps(&tempBRowValues[colB]);
+                // Load 4 values from the temporary values array into a SIMD register
+                __m128 simdTempValues = _mm_loadu_ps(&tempValues[colB]);
+                // Multiply and accumulate the values
+                simdTempValues = _mm_add_ps(simdTempValues, _mm_mul_ps(simdValueA, simdValuesB));
+                // Store the result back into the temporary values array
+                _mm_storeu_ps(&tempValues[colB], simdTempValues);
+            }
+
+            float a_value = matrixA->values[indexA];
+            baseIndexB = (matrixB->noCols - (matrixB->noCols % 4));
+            for (uint64_t remainB_Index = 0; remainB_Index < matrixB->noCols % 4; remainB_Index++)
+            {
+                float calc = tempBRowValues[baseIndexB + remainB_Index] * a_value;
+                tempValues[baseIndexB + remainB_Index] += calc;
+            }
+
+            // Reset the temporary B row array for the next iteration
+            for (uint64_t colB = 0; colB < matrixB->noCols; ++colB)
+            {
+                tempBRowValues[colB] = 0.0f;
+            }
+        }
+
+        // Transfer the non-zero values from the temporary values array to the result matrix
+        uint64_t nzCountResult = 0;
+        for (uint64_t colResult = 0; colResult < resultMatrix->noCols; ++colResult)
+        {
+            if (tempValues[colResult] != 0.0f)
+            {
+                // Calculate the index for the current non-zero element in the result matrix
+                uint64_t resultIndex = rowA * resultMatrix->noNonZero + nzCountResult;
+                // Store the value and index in the result matrix
+                resultMatrix->values[resultIndex] = tempValues[colResult];
+                resultMatrix->indices[resultIndex] = tempIndices[colResult];
+                nzCountResult++;
+            }
+        }
     }
+
+    // Free the allocated memory for the temporary arrays
+    free(tempValues);
+    free(tempIndices);
+    free(tempBRowValues);
 }
