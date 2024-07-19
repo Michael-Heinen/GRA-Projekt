@@ -21,11 +21,12 @@ void matr_mult_ellpack_V2(const ELLPACKMatrix *matrixA, const ELLPACKMatrix *mat
     resultMatrix->values = (float *)calloc(resultMatrix->noRows * resultMatrix->noNonZero, sizeof(float));
     resultMatrix->indices = (uint64_t *)calloc(resultMatrix->noRows * resultMatrix->noNonZero, sizeof(uint64_t));
 
-    // If either input matrix has no non-zero elements, the result matrix is empty
-    if (matrixA->noNonZero == 0 || matrixB->noNonZero == 0)
+    if (!resultMatrix->values || !resultMatrix->indices)
     {
-        resultMatrix->noNonZero = 0;
-        return;
+        free(resultMatrix->values);
+        free(resultMatrix->indices);
+        fprintf(stderr, "Memory allocation failed (matr_mult_ellpack_V2 (V2))\n");
+        exit(EXIT_FAILURE);
     }
 
     // Allocate temporary arrays to store intermediate results for the current row
@@ -45,6 +46,7 @@ void matr_mult_ellpack_V2(const ELLPACKMatrix *matrixA, const ELLPACKMatrix *mat
 
         // Loop through each non-zero element in the current row of matrixA
         for (uint64_t nzIndexA = 0; nzIndexA < matrixA->noNonZero; ++nzIndexA)
+
         {
             // Calculate the index of the current non-zero element in matrixA
             uint64_t indexA = rowA * matrixA->noNonZero + nzIndexA;
