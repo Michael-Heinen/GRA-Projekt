@@ -96,6 +96,7 @@ int main(int argc, char **argv)
             break;
         case 'B':
             benchmark = optarg ? atoi(optarg) : 1;
+            printf("Benchmark value: %d.\n", benchmark);
             break;
         case 'a':
             input_file_a = optarg;
@@ -131,12 +132,12 @@ int main(int argc, char **argv)
 
     if (control_indices(input_file_a, &matrix_a) !=0)
     {
-        handle_error("in control_doubleIndices_inputs (A)", &matrix_a, &matrix_b, NULL);
+        handle_error("in control_indices_inputs (A)", &matrix_a, &matrix_b, NULL);
     }
 
     if (control_indices(input_file_b, &matrix_b) !=0)
     {
-        handle_error("in control_doubleIndices_inputs (B)", &matrix_a, &matrix_b, NULL);
+        handle_error("in control_indices (B)", &matrix_a, &matrix_b, NULL);
     }
 
     // start clock
