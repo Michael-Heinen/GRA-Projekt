@@ -5,6 +5,6 @@
 
 int read_matrix(const char *filename, ELLPACKMatrix *matrix);
 int write_matrix(const char *filename, const ELLPACKMatrix *matrix, uint64_t new_noNonZero);
-int compute_noNonZero(ELLPACKMatrix *matrix)
+int compute_noNonZero(ELLPACKMatrix *matrix);
 
 #endif // MATRIX_IO_H
