@@ -307,12 +307,12 @@ int compute_noNonZero(ELLPACKMatrix *matrix)
 int count_numbers_in_line(const char *line) {
     int count = 0;
     char *token = strtok(line, ",");
+    char *last_token = NULL;
 
     while (token != NULL) {
         count++;
         token = strtok(NULL, ",");
     }
-
 
     return count;
 }
