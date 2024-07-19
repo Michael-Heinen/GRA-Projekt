@@ -2,8 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
-
 void matr_mult_ellpack_V3(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMatrix *result)
 {
     if (a->noCols != b->noRows)
@@ -19,6 +17,14 @@ void matr_mult_ellpack_V3(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPAC
     result->values = (float *)calloc(result->noRows * result->noNonZero, sizeof(float));
     result->indices = (uint64_t *)calloc(result->noRows * result->noNonZero, sizeof(uint64_t));
 
+    if (!result->values || !result->indices)
+    {
+        free(result->values);
+        free(result->indices);
+        fprintf(stderr, "Memory allocation failed (matr_mult_ellpack_V3 (V3))\n");
+        exit(EXIT_FAILURE);
+    }
+
     if (a->noNonZero == 0 || b->noNonZero == 0)
     {
         result->noNonZero = 0;
@@ -28,7 +34,7 @@ void matr_mult_ellpack_V3(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPAC
     // temporary result arrays for current row
     float *temp_values = (float *)calloc(result->noCols, sizeof(float));
     uint64_t *temp_indices = (uint64_t *)calloc(result->noCols, sizeof(uint64_t));
-    //uint64_t temp_nonZero = 0;
+    // uint64_t temp_nonZero = 0;
 
     for (uint64_t curr_a_row = 0; curr_a_row < a->noRows; ++curr_a_row)
     {
@@ -55,19 +61,22 @@ void matr_mult_ellpack_V3(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPAC
 
                 temp_values[b_col] += a_value * b_value;
                 temp_indices[b_col] = b_col;
-                //temp_nonZero++;
+                // temp_nonZero++;
             }
         }
 
         // copy temp arrays into final array
+        uint64_t cnt_zero = 0;
         for (uint64_t i = 0; i < result->noCols; ++i)
         {
             if (temp_values[i] != 0.0f)
             {
-                uint64_t res_index = curr_a_row * result->noNonZero + i;
+                uint64_t res_index = curr_a_row * result->noNonZero + i - cnt_zero;
                 result->values[res_index] = temp_values[i];
                 result->indices[res_index] = temp_indices[i];
+                continue;
             }
+            cnt_zero++;
         }
 
         // reset temp arrays
@@ -76,7 +85,7 @@ void matr_mult_ellpack_V3(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPAC
             temp_values[i] = 0.0f;
             temp_indices[i] = 0;
         }
-        //temp_nonZero = 0;
+        // temp_nonZero = 0;
     }
 
     free(temp_values);

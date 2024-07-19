@@ -20,5 +20,6 @@ void matr_mult_ellpack_V2(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPAC
 void matr_mult_ellpack_V3(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMatrix *result);
 void matr_mult_ellpack_V4(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMatrix *result);
 int compute_noNonZero(ELLPACKMatrix *matrix);
+void free_matrix(ELLPACKMatrix *matrix);
 
 #endif // ELLPACK_H
