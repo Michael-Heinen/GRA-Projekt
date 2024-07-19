@@ -70,7 +70,7 @@ def save_matrix_to_file(matrix, filename, density):
             filtered_indices = [idx for idx in row_indices if idx != "*"][:max_nonzeros]
             filtered_indices.extend(["*"] * (max_nonzeros - len(filtered_indices)))
             index_lines.append(",".join(filtered_indices))
-        f.write(",".join(index_lines)+ "\n")
+        f.write(",".join(index_lines))
         
     
 # Function to compare matrices

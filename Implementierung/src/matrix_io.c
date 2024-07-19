@@ -108,6 +108,14 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
             fclose(file);
             return -1;
         }
+
+        if ((read = getline(&line, &len, file)) != -1)
+        {
+            fprintf(stderr, "Error: There are more lines as 3.\n");
+            free(line);
+            fclose(file);
+            return -1;
+        }
     }
     else if ((read = getline(&line, &len, file)) != -1)
     {
@@ -205,10 +213,13 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
             matrix->indices[i] = 0;
             if (fscanf(file, "%*c") != 0)
             {
-                fprintf(stderr, "Error skipping the comma (index) %s\n", filename);
-                free(line);
-                fclose(file);
-                return -1;
+                if (i != (matrix->noRows * matrix->noNonZero - 1))
+                {
+                    fprintf(stderr, "Error skipping the comma (index) %s\n", filename);
+                    free(line);
+                    fclose(file);
+                    return -1;
+                }
             }
         } else {
             ungetc(ch, file);
