@@ -4,6 +4,8 @@ import numpy as np
 import cupy as cp
 import matplotlib.pyplot as plt
 import argparse
+import time
+import random
 
 # Base directories
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -33,45 +35,48 @@ EDGE_CASES = [
     ("sparse", (4, 4, 0.25))  # Sparse matrix with 25% density
 ]
 
-# Function to generate matrices
-def generate_matrix(rows, cols, density=0.5):
-    if callable(density):
-        matrix = np.fromfunction(np.vectorize(lambda i, j: density()), (rows, cols))
-    else:
-        matrix = np.random.choice([0, 1], size=(rows, cols), p=[1-density, density]) * np.random.rand(rows, cols)
-    return matrix
-
 # Function to save matrix to file
-def save_matrix_to_file(matrix, filename, density):
-    rows, cols = matrix.shape
-    try:
-        max_nonzeros = int(np.count_nonzero(matrix, axis=1).max())
-    except ValueError:  # empty matrix edge case
-        max_nonzeros = 0
+def save_matrix_row_by_row(rows, cols, density, filename):
+    # Start timing
+    start_time = time.time()
+
+    max_nonzeros = 0
+    row_values_list = []
+    row_indices_list = []
 
     with open(filename, 'w') as f:
+        # First pass: Generate the matrix and determine max_nonzeros
+        for row in range(rows):
+            row_values = []
+            row_indices = []
+
+            for col in range(cols):
+                if random.random() < density:
+                    value = random.random()
+                    row_values.append(value)
+                    row_indices.append(col)
+            
+            max_nonzeros = max(max_nonzeros, len(row_values))
+            row_values_list.append(row_values)
+            row_indices_list.append(row_indices)
+
+        # Write metadata
         f.write(f"{rows},{cols},{max_nonzeros}\n")
-        
-        if(density == 0):
-            f.write("\n")
-            return
-        
+
         row_lines = []
-        for row in matrix:
-            row_values = [str(v) if v != 0 else "*" for v in row]
-            filtered_values = [v for v in row_values if v != "*"][:max_nonzeros]
-            filtered_values.extend(["*"] * (max_nonzeros - len(filtered_values)))
+        for row_values in row_values_list:
+            filtered_values = [str(v) for v in row_values] + ["*"] * (max_nonzeros - len(row_values))
             row_lines.append(",".join(filtered_values))
         f.write(",".join(row_lines) + "\n")
-        
+
         index_lines = []
-        for row in matrix:
-            row_indices = [str(idx) if row[idx] != 0 else "*" for idx in range(cols)]
-            filtered_indices = [idx for idx in row_indices if idx != "*"][:max_nonzeros]
-            filtered_indices.extend(["*"] * (max_nonzeros - len(filtered_indices)))
+        for row_indices in row_indices_list:
+            filtered_indices = [str(i) for i in row_indices] + ["*"] * (max_nonzeros - len(row_indices))
             index_lines.append(",".join(filtered_indices))
         f.write(",".join(index_lines))
-        
+    # End timing
+    end_time = time.time()
+    duration = end_time - start_time
     
 # Function to compare matrices
 def compare_matrices(file1, matrix2):
@@ -112,16 +117,14 @@ def parse_execution_time(output):
     return None
 
 # Function to generate test matrices
-def generate_test_matrices():
+def generate_test_matrices(density):
     delete_files_in_directory(TEST_MATRICES_DIR)
     for size in MATRIX_SIZES:
         matrix_a_filename = os.path.join(TEST_MATRICES_DIR, f"matrixA_{size}x{size}.txt")
         matrix_b_filename = os.path.join(TEST_MATRICES_DIR, f"matrixB_{size}x{size}.txt")
         if not (os.path.exists(matrix_a_filename) and os.path.exists(matrix_b_filename)):
-            matrix_a = generate_matrix(size, size, DENSITY)
-            matrix_b = generate_matrix(size, size, DENSITY)
-            save_matrix_to_file(matrix_a, matrix_a_filename, DENSITY)
-            save_matrix_to_file(matrix_b, matrix_b_filename, DENSITY)
+            save_matrix_row_by_row(size, size, density, matrix_a_filename)
+            save_matrix_row_by_row(size, size, density, matrix_b_filename)
             # print(f"Generated: {matrix_a_filename} and {matrix_b_filename}")
 
 # generate edge case matrices
@@ -133,12 +136,12 @@ def generate_edge_case_matrices():
         if not (os.path.exists(matrix_a_filename) and os.path.exists(matrix_b_filename)):
             if len(case_params) == 2:
                 rows, cols = case_params
-                matrix_a = generate_matrix(rows, cols)
-                matrix_b = generate_matrix(rows, cols)
+                matrix_a = np.random.choice([0, 1], size=(rows, cols), p=[1-density, density]) * np.random.rand(rows, cols)
+                matrix_b = np.random.choice([0, 1], size=(rows, cols), p=[1-density, density]) * np.random.rand(rows, cols)
             else:
                 rows, cols, density = case_params
-                matrix_a = generate_matrix(rows, cols, density)
-                matrix_b = generate_matrix(rows, cols, density)
+                matrix_a = np.random.choice([0, 1], size=(rows, cols), p=[1-density, density]) * np.random.rand(rows, cols)
+                matrix_b = np.random.choice([0, 1], size=(rows, cols), p=[1-density, density]) * np.random.rand(rows, cols)
             save_matrix_to_file(matrix_a, matrix_a_filename)
             save_matrix_to_file(matrix_b, matrix_b_filename)
             # print(f"Generated: {matrix_a_filename} and {matrix_b_filename}")
@@ -260,7 +263,7 @@ def run_edge_case_tests():
 # Function to plot performance results
 def plot_performance_results(performance_results, densities):
     num_densities = len(densities)
-    fig, axes = plt.subplots(num_densities, 1, figsize=(12, 8), sharex=True)
+    fig, axes = plt.subplots(num_densities, 1, figsize=(12, 8), sharex=True, sharey=True)
     
     if num_densities == 1:
         axes = [axes]
@@ -289,9 +292,9 @@ def plot_performance_results(performance_results, densities):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Matrix Multiplication Performance Testing')
-    parser.add_argument('-V','--versions', type=int, nargs='+', default=[0, 3, 4], help='Versions to test')
+    parser.add_argument('-V','--versions', type=int, nargs='+', default=[0, 2, 4], help='Versions to test')
     parser.add_argument('-d','--density', type=float, nargs='+', default=[0.2, 0.5, 0.8], help='Density of the matrices')
-    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[8, 16, 32, 64, 128, 256, 512,750, 1024, 1535 , 2048, 3064, 4096], help='List of matrix sizes')
+    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[8, 16, 32, 64, 128, 256, 512,750, 1024,1535 ,2048, 3064, 4096], help='List of matrix sizes')#6045, 8054, 10564, 12354]
     parser.add_argument('-n','--num_runs', type=int, default=1, help='Number of runs for each test')
     parser.add_argument('-tmo','--timeout', type=int, default=60, help='Timeout for each test in seconds')
 
@@ -302,7 +305,7 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--plot', action='store_false', help='Does NOT Plot performance results')
     parser.add_argument('-t', '--testing', action='store_true', help='Print Testing output')
     parser.add_argument('-gpu', '--gpu', action='store_true', help='Using GPU for Comparing Matrix Mul')
-    parser.add_argument('-comp', '--compare', action='store_true', help='Comparing with numpy matrix multiplication')
+    parser.add_argument('-cmp', '--compare', action='store_false', help='Comparing with numpy matrix multiplication')
 
     args = parser.parse_args()
     
@@ -324,7 +327,7 @@ if __name__ == "__main__":
         DENSITY = density
         # Generate test matrices if needed
         if args.generate:
-            generate_test_matrices()
+            generate_test_matrices(density)
         # Run matrix tests
         perf = run_tests(args.num_runs, args.timeout)
         performances.append(perf)
