@@ -14,13 +14,13 @@ void matr_mult_ellpack_V3(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPAC
     result->noCols = b->noCols;
     result->noNonZero = b->noCols;
 
-    result->values = (float *)calloc(result->noRows * result->noNonZero, sizeof(float));
-    result->indices = (uint64_t *)calloc(result->noRows * result->noNonZero, sizeof(uint64_t));
+    result->result_values = (float **)calloc(result->noRows, sizeof(float*));
+    result->result_indices = (uint64_t **)calloc(result->noRows, sizeof(uint64_t*));
 
-    if (!result->values || !result->indices)
+    if (!result->result_values || !result->result_indices)
     {
-        free(result->values);
-        free(result->indices);
+        free(result->result_values);
+        free(result->result_indices);
         fprintf(stderr, "Memory allocation failed (matr_mult_ellpack_V3 (V3))\n");
         exit(EXIT_FAILURE);
     }
@@ -31,13 +31,13 @@ void matr_mult_ellpack_V3(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPAC
         return;
     }
 
-    // temporary result arrays for current row
-    float *temp_values = (float *)calloc(result->noCols, sizeof(float));
-    uint64_t *temp_indices = (uint64_t *)calloc(result->noCols, sizeof(uint64_t));
-    // uint64_t temp_nonZero = 0;
+    uint64_t max_non_zero = 0;
 
     for (uint64_t curr_a_row = 0; curr_a_row < a->noRows; ++curr_a_row)
     {
+
+        result->result_values[curr_a_row] = (float *)calloc(result->noCols, sizeof(float));
+        result->result_indices[curr_a_row] = (uint64_t *)calloc(result->noCols, sizeof(uint64_t));
 
         for (uint64_t curr_a_nonZero = 0; curr_a_nonZero < a->noNonZero; ++curr_a_nonZero)
         {
@@ -59,35 +59,32 @@ void matr_mult_ellpack_V3(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPAC
                 }
                 uint64_t b_col = b->indices[b_index];
 
-                temp_values[b_col] += a_value * b_value;
-                temp_indices[b_col] = b_col;
-                // temp_nonZero++;
+                result->result_values[curr_a_row][b_col] += a_value * b_value;
+                result->result_indices[curr_a_row][b_col] = b_col;
+
             }
         }
 
-        // copy temp arrays into final array
-        uint64_t cnt_zero = 0;
+
+        uint64_t cnt_non_zero = 0;
         for (uint64_t i = 0; i < result->noCols; ++i)
         {
-            if (temp_values[i] != 0.0f)
+            if (result->result_values[curr_a_row][i] != 0.0f)
             {
-                uint64_t res_index = curr_a_row * result->noNonZero + i - cnt_zero;
-                result->values[res_index] = temp_values[i];
-                result->indices[res_index] = temp_indices[i];
-                continue;
+                result->result_values[curr_a_row][cnt_non_zero] = result->result_values[curr_a_row][i];
+                result->result_indices[curr_a_row][cnt_non_zero] = result->result_indices[curr_a_row][i];
+                cnt_non_zero++;
             }
-            cnt_zero++;
+
         }
 
-        // reset temp arrays
-        for (uint64_t i = 0; i < result->noCols; ++i)
+        if (cnt_non_zero > max_non_zero)
         {
-            temp_values[i] = 0.0f;
-            temp_indices[i] = 0;
+            max_non_zero = cnt_non_zero;
         }
-        // temp_nonZero = 0;
+
+
     }
 
-    free(temp_values);
-    free(temp_indices);
+    result->noNonZero = max_non_zero;
 }

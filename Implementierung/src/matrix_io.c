@@ -246,21 +246,21 @@ int write_matrix(const char *filename, const ELLPACKMatrix *matrix, uint64_t new
         return -1;
     }
 
-    fprintf(file, "%" PRId64 ",%" PRId64 ",%" PRId64 "\n", matrix->noRows, matrix->noCols, new_noNonZero);
+    fprintf(file, "%" PRId64 ",%" PRId64 ",%" PRId64 "\n", matrix->noRows, matrix->noCols, matrix->noNonZero);
 
     for (uint64_t i = 0; i < matrix->noRows; ++i)
     {
-        for (uint64_t j = 0; j < new_noNonZero; j++)
+        for (uint64_t j = 0; j < matrix->noNonZero; j++)
         {
-            if (matrix->values[i * matrix->noNonZero + j] == 0.0f)
+            if (matrix->result_values[i][j] == 0.0f)
             {
                 fprintf(file, "%c", '*');
             }
             else
             {
-                fprintf(file, "%f", matrix->values[i * matrix->noNonZero + j]);
+                fprintf(file, "%f", matrix->result_values[i][j]);
             }
-            if (i * new_noNonZero + j < matrix->noRows * new_noNonZero - 1)
+            if (i * matrix->noNonZero + j < matrix->noRows * matrix->noNonZero - 1)
             {
                 fprintf(file, ",");
             }
@@ -270,17 +270,17 @@ int write_matrix(const char *filename, const ELLPACKMatrix *matrix, uint64_t new
 
     for (uint64_t i = 0; i < matrix->noRows; ++i)
     {
-        for (uint64_t j = 0; j < new_noNonZero; j++)
+        for (uint64_t j = 0; j < matrix->noNonZero; j++)
         {
-            if (matrix->values[i * matrix->noNonZero + j] == 0.0f)
+            if (matrix->result_values[i][j] == 0.0f)
             {
                 fprintf(file, "%c", '*');
             }
             else
             {
-                fprintf(file, "%" PRId64, matrix->indices[i * matrix->noNonZero + j]);
+                fprintf(file, "%" PRId64, matrix->result_indices[i][j]);
             }
-            if (i * new_noNonZero + j < matrix->noRows * new_noNonZero - 1)
+            if (i * matrix->noNonZero + j < matrix->noRows * matrix->noNonZero - 1)
             {
                 fprintf(file, ",");
             }
@@ -296,12 +296,12 @@ int write_matrix(const char *filename, const ELLPACKMatrix *matrix, uint64_t new
 int compute_noNonZero(ELLPACKMatrix *matrix)
 {
     uint64_t maxNoNonZero = 0;
-    for (uint64_t i = 0; i < matrix->noCols; i++)
+    for (uint64_t i = 0; i < matrix->noRows; i++)
     {
         uint64_t tmpNoNonZero = 0;
-        for (uint64_t j = 0; j < matrix->noNonZero; j++)
+        for (uint64_t j = 0; j < matrix->noCols; j++)
         {
-            if (matrix->values[i * matrix->noNonZero + j] == 0.0f)
+            if (matrix->result_values[i][j] == 0.0f)
             {
                 break;
             }

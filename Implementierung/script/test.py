@@ -289,9 +289,9 @@ def plot_performance_results(performance_results, densities):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Matrix Multiplication Performance Testing')
-    parser.add_argument('-V','--versions', type=int, nargs='+', default=[0, 3, 4], help='Versions to test')
+    parser.add_argument('-V','--versions', type=int, nargs='+', default=[1,2,3, 4], help='Versions to test')
     parser.add_argument('-d','--density', type=float, nargs='+', default=[0.2, 0.5, 0.8], help='Density of the matrices')
-    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[8, 16, 32, 64, 128, 256, 512,750, 1024, 1535 , 2048, 3064, 4096], help='List of matrix sizes')
+    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[8, 16, 32, 64, 128, 256, 512,750, 1024, 1283, 1535, 1789, 2048, 3064, 4096], help='List of matrix sizes') #,6034, 8321, 10348, 12903, 15012]
     parser.add_argument('-n','--num_runs', type=int, default=1, help='Number of runs for each test')
     parser.add_argument('-tmo','--timeout', type=int, default=60, help='Timeout for each test in seconds')
 
@@ -302,7 +302,7 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--plot', action='store_false', help='Does NOT Plot performance results')
     parser.add_argument('-t', '--testing', action='store_true', help='Print Testing output')
     parser.add_argument('-gpu', '--gpu', action='store_true', help='Using GPU for Comparing Matrix Mul')
-    parser.add_argument('-comp', '--compare', action='store_true', help='Comparing with numpy matrix multiplication')
+    parser.add_argument('-cmp', '--compare', action='store_true', help='Comparing with numpy matrix multiplication')
 
     args = parser.parse_args()
     

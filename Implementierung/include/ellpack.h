@@ -10,6 +10,9 @@ typedef struct
     uint64_t noNonZero;
     float *values;
     uint64_t *indices;
+    float **result_values;
+    uint64_t **result_indices;
+
 } ELLPACKMatrix;
 
 int read_matrix(const char *filename, ELLPACKMatrix *matrix);
