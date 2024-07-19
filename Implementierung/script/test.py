@@ -42,7 +42,7 @@ def generate_matrix(rows, cols, density=0.5):
     return matrix
 
 # Function to save matrix to file
-def save_matrix_to_file(matrix, filename):
+def save_matrix_to_file(matrix, filename, density):
     rows, cols = matrix.shape
     try:
         max_nonzeros = int(np.count_nonzero(matrix, axis=1).max())
@@ -52,16 +52,17 @@ def save_matrix_to_file(matrix, filename):
     with open(filename, 'w') as f:
         f.write(f"{rows},{cols},{max_nonzeros}\n")
         
+        if(density == 0):
+            f.write("\n")
+            return
+        
         row_lines = []
         for row in matrix:
             row_values = [str(v) if v != 0 else "*" for v in row]
             filtered_values = [v for v in row_values if v != "*"][:max_nonzeros]
             filtered_values.extend(["*"] * (max_nonzeros - len(filtered_values)))
             row_lines.append(",".join(filtered_values))
-
-        if(len(row_lines) != 0):
-            f.write(",".join(row_lines))
-        f.write("\n")
+        f.write(",".join(row_lines) + "\n")
         
         index_lines = []
         for row in matrix:
@@ -69,9 +70,8 @@ def save_matrix_to_file(matrix, filename):
             filtered_indices = [idx for idx in row_indices if idx != "*"][:max_nonzeros]
             filtered_indices.extend(["*"] * (max_nonzeros - len(filtered_indices)))
             index_lines.append(",".join(filtered_indices))
+        f.write(",".join(index_lines)+ "\n")
         
-        if(len(row_lines) != 0):
-            f.write(",".join(index_lines))
     
 # Function to compare matrices
 def compare_matrices(file1, matrix2):
@@ -120,8 +120,8 @@ def generate_test_matrices():
         if not (os.path.exists(matrix_a_filename) and os.path.exists(matrix_b_filename)):
             matrix_a = generate_matrix(size, size, DENSITY)
             matrix_b = generate_matrix(size, size, DENSITY)
-            save_matrix_to_file(matrix_a, matrix_a_filename)
-            save_matrix_to_file(matrix_b, matrix_b_filename)
+            save_matrix_to_file(matrix_a, matrix_a_filename, DENSITY)
+            save_matrix_to_file(matrix_b, matrix_b_filename, DENSITY)
             # print(f"Generated: {matrix_a_filename} and {matrix_b_filename}")
 
 # generate edge case matrices
