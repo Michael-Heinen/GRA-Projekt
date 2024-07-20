@@ -55,6 +55,7 @@ dkms.conf
 Implementierung/main
 Implementierung/files/*
 Implementierung/script/*.png
+**/performance_comparison.png
 
 .vscode
 .idea
