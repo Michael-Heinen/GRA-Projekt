@@ -190,6 +190,9 @@ int main(int argc, char **argv)
     case 4:
         matr_mult_ellpack_V4(&matrix_a, &matrix_b, &result);
         break;
+    case 5:
+        matr_mult_ellpack_V5(&matrix_a, &matrix_b, &result);
+        break;
     default:
         handle_error("Unknown version specified", &matrix_a, &matrix_b, NULL, version);
     }
