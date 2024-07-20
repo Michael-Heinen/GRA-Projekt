@@ -54,9 +54,10 @@ dkms.conf
 //own project compilation
 Implementierung/main
 Implementierung/files/*
-
 Implementierung/script/*.png
 
 .vscode
 .idea
 .venv
+
+**/__pycache__/
