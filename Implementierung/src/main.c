@@ -1,8 +1,10 @@
+#define _POSIX_C_SOURCE 199309L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
 #include <stdbool.h>
-#include <linux/time.h>
+#include <time.h>
 #include <errno.h>
 #include <string.h>
 
@@ -26,7 +28,7 @@ const char *help_msg =
     "  -V, --version VERSION  Specify the version of the multiplication algorithm (default is 0)\n"
     "  -B, --benchmark [N]    Run benchmark with N iterations (default is 3)\n";
 
-const char *help_inputFilesFormat =
+const char *help_input_files_format =
     "\n"
     "Inputs Format:\n"
     "LINE | CONTENT\n"
@@ -43,7 +45,7 @@ const char *help_inputFilesFormat =
 
 void print_input_files_format()
 {
-    fprintf(stdout, help_inputFilesFormat);
+    fprintf(stdout, "%s", help_input_files_format);
 }
 
 void print_usage(const char *progname)
