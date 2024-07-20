@@ -91,6 +91,9 @@ void free_matrix(ELLPACKMatrix *matrix, int version)
 
                     free(matrix->result_indices);
                 }
+
+                free(matrix->values);
+                free(matrix->indices);
         }
     }
 }

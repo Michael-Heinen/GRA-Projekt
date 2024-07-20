@@ -27,9 +27,13 @@ clean:
 	rm -rf $(BUILD_DIR) $(TARGET)
 
 run: $(TARGET)
-	./$(TARGET) -a input_a.txt -b input_b.txt -o output.txt
+	./$(TARGET) -a files/test_matrices/matrixA_4x4_D0.2.txt -b files/test_matrices/matrixB_4x4_D0.2.txt -o files/results/result_4x4_D0.2.txt
 
 help:
 	./$(TARGET) --help
 
-.PHONY: all clean run help
+valgrind: CFLAGS += -g
+valgrind: $(TARGET)
+	valgrind --leak-check=full ./$(TARGET) -a files/test_matrices/matrixA_4x4_D0.2.txt -b files/test_matrices/matrixB_4x4_D0.2.txt -o files/results/result_4x4_D0.2.txt
+
+.PHONY: all clean run help valgrind

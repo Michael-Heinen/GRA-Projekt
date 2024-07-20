@@ -231,9 +231,9 @@ def run_edge_case_tests():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Matrix Multiplication Performance Testing')
-    parser.add_argument('-V','--versions', type=int, nargs='+', default=[0, 2, 4], help='Versions to test')
+    parser.add_argument('-V','--versions', type=int, nargs='+', default=[0, 1, 2], help='Versions to test')
     parser.add_argument('-d','--density', type=float, nargs='+', default=[0.2, 0.5, 0.8], help='Density of the matrices')
-    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[8, 16, 32, 64, 128, 256, 512,750, 1024,1535 ,2048, 3064, 4096], help='List of matrix sizes')#6045, 8054, 10564, 12354]
+    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[8, 16, 32, 64, 128, 256, 512, 750, 1024, 1535, 2048, 3064, 4096], help='List of matrix sizes')#6045, 8054, 10564, 12354]
     parser.add_argument('-n','--num_runs', type=int, default=1, help='Number of runs for each test')
     parser.add_argument('-tmo','--timeout', type=int, default=60, help='Timeout for each test in seconds')
 
