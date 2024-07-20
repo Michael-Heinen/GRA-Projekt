@@ -15,14 +15,12 @@ FILES_DIR = os.path.join(BASE_DIR, 'files')
 RESULTS_DIR = os.path.join(FILES_DIR, 'results')
 TEST_MATRICES_DIR = os.path.join(FILES_DIR, 'test_matrices')
 EDGE_MATRICES_DIR = os.path.join(FILES_DIR, 'edge_matrices')
-EXPECTED_DIR = os.path.join(FILES_DIR, 'expected')
 
 # Ensure directories exist
 os.makedirs(FILES_DIR, exist_ok=True)
 os.makedirs(RESULTS_DIR, exist_ok=True)
 os.makedirs(TEST_MATRICES_DIR, exist_ok=True)
 os.makedirs(EDGE_MATRICES_DIR, exist_ok=True)
-os.makedirs(EXPECTED_DIR, exist_ok=True)
 
 # Constants
 EDGE_CASES = [
@@ -37,9 +35,6 @@ EDGE_CASES = [
 
 # Function to save matrix to file
 def save_matrix_row_by_row(rows, cols, density, filename):
-    # Start timing
-    start_time = time.time()
-
     max_nonzeros = 0
     row_values_list = []
     row_indices_list = []
@@ -74,9 +69,6 @@ def save_matrix_row_by_row(rows, cols, density, filename):
             filtered_indices = [str(i) for i in row_indices] + ["*"] * (max_nonzeros - len(row_indices))
             index_lines.append(",".join(filtered_indices))
         f.write(",".join(index_lines))
-    # End timing
-    end_time = time.time()
-    duration = end_time - start_time
     
 # Function to compare matrices
 def compare_matrices(file1, matrix2):
@@ -118,33 +110,30 @@ def parse_execution_time(output):
 
 # Function to generate test matrices
 def generate_test_matrices(density):
-    delete_files_in_directory(TEST_MATRICES_DIR)
     for size in MATRIX_SIZES:
-        matrix_a_filename = os.path.join(TEST_MATRICES_DIR, f"matrixA_{size}x{size}.txt")
-        matrix_b_filename = os.path.join(TEST_MATRICES_DIR, f"matrixB_{size}x{size}.txt")
+        matrix_a_filename = os.path.join(TEST_MATRICES_DIR, f"matrixA_{size}x{size}_D{density}.txt")
+        matrix_b_filename = os.path.join(TEST_MATRICES_DIR, f"matrixB_{size}x{size}_D{density}.txt")
         if not (os.path.exists(matrix_a_filename) and os.path.exists(matrix_b_filename)):
             save_matrix_row_by_row(size, size, density, matrix_a_filename)
             save_matrix_row_by_row(size, size, density, matrix_b_filename)
-            # print(f"Generated: {matrix_a_filename} and {matrix_b_filename}")
 
-# generate edge case matrices
+# Function to generate edge case matrices
 def generate_edge_case_matrices():
-    delete_files_in_directory(EDGE_MATRICES_DIR)
     for case_name, case_params in EDGE_CASES:
         matrix_a_filename = os.path.join(EDGE_MATRICES_DIR, f"edge_case_{case_name}_A.txt")
         matrix_b_filename = os.path.join(EDGE_MATRICES_DIR, f"edge_case_{case_name}_B.txt")
-        if not (os.path.exists(matrix_a_filename) and os.path.exists(matrix_b_filename)):
+        if (os.path.exists(matrix_a_filename) and os.path.exists(matrix_b_filename)):
             if len(case_params) == 2:
                 rows, cols = case_params
+                density = 0.25
                 matrix_a = np.random.choice([0, 1], size=(rows, cols), p=[1-density, density]) * np.random.rand(rows, cols)
                 matrix_b = np.random.choice([0, 1], size=(rows, cols), p=[1-density, density]) * np.random.rand(rows, cols)
             else:
                 rows, cols, density = case_params
                 matrix_a = np.random.choice([0, 1], size=(rows, cols), p=[1-density, density]) * np.random.rand(rows, cols)
                 matrix_b = np.random.choice([0, 1], size=(rows, cols), p=[1-density, density]) * np.random.rand(rows, cols)
-            save_matrix_to_file(matrix_a, matrix_a_filename)
-            save_matrix_to_file(matrix_b, matrix_b_filename)
-            # print(f"Generated: {matrix_a_filename} and {matrix_b_filename}")
+        # save_matrix_row_by_row(size, size, density, matrix_a_filename)
+        # save_matrix_row_by_row(size, size, density, matrix_b_filename)
 
 # load and clean matrixes for comparison
 def load_and_clean_matrix(filename):
@@ -193,14 +182,14 @@ def run_tests(num_runs, timeout=60):
     timed_out_versions = set()
 
     for size in MATRIX_SIZES:
-        matrix_a_filename = os.path.join(TEST_MATRICES_DIR, f"matrixA_{size}x{size}.txt")
-        matrix_b_filename = os.path.join(TEST_MATRICES_DIR, f"matrixB_{size}x{size}.txt")
+        matrix_a_filename = os.path.join(TEST_MATRICES_DIR, f"matrixA_{size}x{size}_D{density}.txt")
+        matrix_b_filename = os.path.join(TEST_MATRICES_DIR, f"matrixB_{size}x{size}_D{density}.txt")
         
         for impl in IMPLEMENTATIONS:
             if impl in timed_out_versions:
                 continue
             
-            print(f"\nTesting V{impl} with matrix size {size}x{size}")
+            print(f"\nTesting V{impl} with matrix size {size}x{size}_D{density}")
             execution_times = []
             
             for i in range(num_runs):  # Run each test three times
@@ -225,7 +214,7 @@ def run_tests(num_runs, timeout=60):
 
             if execution_times:
                 avg_time = sum(execution_times) / len(execution_times)
-                print(f"Average Execution Time for V{impl} with matrix size {size}x{size}: {avg_time:.6f} seconds")
+                print(f"Average Execution Time for V{impl} with matrix size {size}x{size}_D{density}: {avg_time:.6f} seconds")
                 performance_results[impl].append(avg_time)
                 
                 if COMPARE:
@@ -299,14 +288,14 @@ if __name__ == "__main__":
     parser.add_argument('-tmo','--timeout', type=int, default=60, help='Timeout for each test in seconds')
 
     parser.add_argument('-c', '--compile', action='store_false', help='Does NOT Compile the implementations')
-    parser.add_argument('-g', '--generate', action='store_false', help='Do NOT generate test matrices')
+    parser.add_argument('-g', '--generate', action='store_true', help='Generate new test matrices for all specified indices')
     parser.add_argument('-e', '--edge', action='store_true', help='Test edge case matrices')
     
     parser.add_argument('-p', '--plot', action='store_false', help='Does NOT Plot performance results')
+    parser.add_argument('-o', '--output', action='store_false', help='Outputs more specific')
     parser.add_argument('-t', '--testing', action='store_true', help='Print Testing output')
     parser.add_argument('-gpu', '--gpu', action='store_true', help='Using GPU for Comparing Matrix Mul')
     parser.add_argument('-cmp', '--compare', action='store_false', help='Comparing with numpy matrix multiplication')
-
     args = parser.parse_args()
     
     MATRIX_SIZES = args.matrix_sizes
@@ -316,24 +305,27 @@ if __name__ == "__main__":
     COMPARE = args.compare
 
     delete_files_in_directory(RESULTS_DIR)
-    delete_files_in_directory(EXPECTED_DIR)
 
     # Compile the implementations
     if args.compile:
         compile_implementations()
+    
+    # delete test_matrices files if they should be newly generated 
+    if args.generate:
+        delete_files_in_directory(TEST_MATRICES_DIR)
 
+    # Testing the script by each density provided
     performances = []
     for density in args.density:
-        DENSITY = density
         # Generate test matrices if needed
-        if args.generate:
-            generate_test_matrices(density)
+        generate_test_matrices(density)
+        
         # Run matrix tests
         perf = run_tests(args.num_runs, args.timeout)
         performances.append(perf)
     
+    # Plot performance results
     if args.plot:
-        # Plot performance results
         plot_performance_results(performances, args.density)
     
     # Run edge case tests
