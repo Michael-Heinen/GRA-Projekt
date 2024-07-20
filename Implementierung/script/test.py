@@ -21,7 +21,7 @@ def compile_implementations():
 # Function to parse execution time from the C program output
 def parse_execution_time(output):
     for line in output.splitlines():
-        if "Execution time:" in line:
+        if "Average execution time:" in line:
             return float(line.split(":")[1].strip().split()[0])
     return None
 
@@ -180,23 +180,22 @@ def run_tests(num_runs, timeout, densities, results_filename):
                 print(f"\nTesting V{impl} with matrix size {size}x{size} and density {density}")
                 execution_times = []
 
-                for i in range(num_runs):
-                    try:
-                        command = [os.path.join(BASE_DIR, "main"), f"-V {impl}", "-B", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-o{os.path.join(RESULTS_DIR, f'result_V{impl}_{size}x{size}.txt')}"]
-                        returncode, stdout, stderr, timed_out = run_isolated_test(command, timeout)
-                        if timed_out:
-                            print(f"Run {i+1} for V{impl} timed out.")
-                            break  # Skip further runs for this implementation
-                        if returncode == 0:
-                            execution_time = parse_execution_time(stdout.decode())
-                            if execution_time is not None:
-                                execution_times.append(execution_time)
-                            else:
-                                print("Failed to parse execution time from the output.")
+                try:
+                    command = [os.path.join(BASE_DIR, "main"), f"-V {impl}", f"-B{num_runs}", f"-a{matrix_a_filename}", f"-b{matrix_b_filename}", f"-o{os.path.join(RESULTS_DIR, f'result_V{impl}_{size}x{size}.txt')}"]
+                    returncode, stdout, stderr, timed_out = run_isolated_test(command, timeout)
+                    if timed_out:
+                        print(f"Run V{impl} timed out.")
+                        break  # Skip further runs for this implementation
+                    if returncode == 0:
+                        execution_time = parse_execution_time(stdout.decode())
+                        if execution_time is not None:
+                            execution_times.append(execution_time)
                         else:
-                            print(f"Run {i+1} Error: {stderr.decode().strip()}")
-                    except Exception as e:
-                        print(f"Run {i+1} Execution error: {e}")
+                            print("Failed to parse execution time from the output.")
+                    else:
+                        print(f"Error: {stderr.decode().strip()}")
+                except Exception as e:
+                    print(f"Execution error: {e}")
 
                 if execution_times:
                     avg_time = sum(execution_times) / len(execution_times)
@@ -241,7 +240,7 @@ if __name__ == "__main__":
     parser.add_argument('-d','--density', type=float, nargs='+', default=[0.2, 0.5, 0.8], help='Density of the matrices')
     parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[8, 16, 32, 64, 128, 256, 512,750, 1024,1535 ,2048, 3064, 4096], help='List of matrix sizes')#6045, 8054, 10564, 12354]
     parser.add_argument('-n','--num_runs', type=int, default=1, help='Number of runs for each test')
-    parser.add_argument('-tmo','--timeout', type=int, default=300, help='Timeout for each test in seconds')
+    parser.add_argument('-tmo','--timeout', type=int, default=10, help='Timeout for each test in seconds')
 
     parser.add_argument('-c', '--compile', action='store_false', help='Does NOT Compile the implementations')
     parser.add_argument('-g', '--generate', action='store_true', help='Generate new test matrices for all specified indices')
