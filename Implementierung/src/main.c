@@ -37,27 +37,38 @@ void print_help(const char *progname)
     fprintf(stdout, "\n%s", help_msg);
 }
 
-void free_matrix(const ELLPACKMatrix *matrix, int version)
+void free_matrix(ELLPACKMatrix *matrix, int version)
 {
     if (matrix)
     {
         if (version == 2 || version == 3)
         {
-            for (uint64_t i = 0; i < matrix->noCols; i++)
+            if (matrix->result_values)
             {
-                free(matrix->result_values[i]);
-                free(matrix->result_indices[i]);
+                for (uint64_t i = 0; i < matrix->noCols; i++)
+                {
+                    free(matrix->result_values[i]);
+                }
+
+                free(matrix->result_values);
             }
 
-            free(matrix->result_values);
-            free(matrix->result_indices);
+            if (matrix->result_indices)
+            {
+                for (uint64_t i = 0; i < matrix->noCols; i++)
+                {
+                    free(matrix->result_indices[i]);
+                }
+
+                free(matrix->result_indices);
+
+            }
         }
         else
         {
             free(matrix->values);
             free(matrix->indices);
         }
-
     }
 }
 
@@ -197,34 +208,26 @@ int main(int argc, char **argv)
         fprintf(stdout, "Execution time: %f seconds\n", time);
     }
 
-    uint64_t new_noNonZero = compute_noNonZero(&result);
-
-
-    switch(version)
+    if (version == 2 || version == 3)
     {
-    case 0:
-    case 1:
-    case 4:
-        if (write_matrix_V1(output_file, &result, new_noNonZero) != 0)
-        {
-            handle_error("Error writing output matrix", &matrix_a, &matrix_b, &result, version);
-        }
-        break;
-    case 2:
-    case 3:
         if (write_matrix_V2(output_file, &result) != 0)
         {
             handle_error("Error writing output matrix", &matrix_a, &matrix_b, &result, version);
         }
-        break;
-    default:
-            handle_error("Unknown version specified", &matrix_a, &matrix_b, &result, version);
+    }
+    else
+    {
+        uint64_t new_noNonZero = compute_noNonZero(&result);
+
+        if (write_matrix_V1(output_file, &result, new_noNonZero) != 0)
+        {
+            handle_error("Error writing output matrix", &matrix_a, &matrix_b, &result, version);
+        }
     }
 
     free_matrix(&matrix_a, version);
     free_matrix(&matrix_b, version);
     free_matrix(&result, version);
-
 
     return EXIT_SUCCESS;
 }

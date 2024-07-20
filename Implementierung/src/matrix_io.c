@@ -1,4 +1,5 @@
 #include "ellpack.h"
+#include "matrix_io.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
@@ -8,8 +9,6 @@
 
 int read_matrix(const char *filename, ELLPACKMatrix *matrix)
 {
-
-    //open input file
     FILE *file = fopen(filename, "r");
     if (!file)
     {
@@ -23,7 +22,7 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
     long file_pos_gets;
     long file_pos_scan;
 
-    //check first line of the file (count_number_in_line counts the numbers of values)
+    //line 1
     if ((read = getline(&line, &len, file)) == -1) {
         fprintf(stderr, "Error reading line 1 (dimension).\n");
         free(line);
@@ -39,7 +38,6 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
         return -1;
     }
 
-    //save "file check position" can check the next lines and set file position to zero to read in the dimension (line 1)
     file_pos_gets = ftell(file);
     fseek(file, 0, SEEK_SET);
 
@@ -51,7 +49,7 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
         return -1;
     }
 
-    //check all values of the dimension (rows and columns must not be 0 / rows,columns and noNonZero must not be negative / noNonZero must not be larger than the rows)
+    if (matrix->noRows == 0 || matrix->noCols == 0)
     {
         fprintf(stderr, "Error: Rows or Cols equals 0. Filename: %s\n", filename);
         free(line);
@@ -74,12 +72,8 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
         fclose(file);
         return -1;
     }
-
-
-    //save "file scan position" (reading position (fscanf)) and set file position to the old "file check position"
     file_pos_scan = ftell(file);
     fseek(file, file_pos_gets, SEEK_SET);
-
 
 
     if (matrix->noNonZero != 0)
@@ -161,10 +155,8 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
         return -1;
     }
 
-    //set file position to the old "file scan position" to scan the values and indices lines (line 2 and 3)
     fseek(file, file_pos_scan, SEEK_SET);
 
-    //allocate the
     matrix->values = (float *)malloc(matrix->noRows * matrix->noNonZero * sizeof(float));
     matrix->indices = (uint64_t *)malloc(matrix->noRows * matrix->noNonZero * sizeof(uint64_t));
 
@@ -244,7 +236,8 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
     free(line);
     fclose(file);
     return 0;
-}
+    }
+
 int write_matrix_V1(const char *filename, const ELLPACKMatrix *matrix, uint64_t new_noNonZero)
 {
     FILE *file = fopen(filename, "w");
@@ -356,7 +349,7 @@ int write_matrix_V2(const char *filename, const ELLPACKMatrix *matrix)
 }
 
 // compute noNonZero in result matrix
-int compute_noNonZero(const ELLPACKMatrix *matrix)
+int compute_noNonZero(ELLPACKMatrix *matrix)
 {
     uint64_t maxNoNonZero = 0;
     for (uint64_t i = 0; i < matrix->noCols; i++)
@@ -378,8 +371,7 @@ int compute_noNonZero(const ELLPACKMatrix *matrix)
     return maxNoNonZero;
 }
 
-int count_numbers_in_line(const char *line)
-{
+int count_numbers_in_line(const char *line) {
     int count = 0;
     char *token = strtok(line, ",");
     char *last_token = NULL;
