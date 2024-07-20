@@ -202,49 +202,51 @@ int main(int argc, char **argv)
         handle_error("in control_indices (B)", &matrix_a, &matrix_b, NULL);
     }
 
+    // variable to calculate the average execution time of the matrix multiplication
+    double time = 0;
 
-
-    // takes the start time for the time measurement
-    struct timespec clock_start_time;
-    if (clock_gettime(CLOCK_MONOTONIC, &clock_start_time) != 0)
+    for (int i = 0; i < benchmark; i++)
     {
-        handle_error("Error getting clock time", &matrix_a, &matrix_b, NULL);
+        // takes the start time for the time measurement
+        struct timespec clock_start_time;
+        if (clock_gettime(CLOCK_MONOTONIC, &clock_start_time) != 0)
+        {
+            handle_error("Error getting clock time", &matrix_a, &matrix_b, NULL);
+        }
+
+        // sleep(1) makes sure there is one second between the timing
+        sleep(1);
+
+        // the switch-case block starts the entered version (getopt: -V). If nothing has been entered, version 0 is always executed
+        switch (version)
+        {
+        case 0:
+            matr_mult_ellpack(&matrix_a, &matrix_b, &result);
+            break;
+        case 1:
+            matr_mult_ellpack_V1(&matrix_a, &matrix_b, &result);
+            break;
+        case 2:
+            matr_mult_ellpack_V2(&matrix_a, &matrix_b, &result);
+            break;
+        default:
+            handle_error("Unknown version specified", &matrix_a, &matrix_b, NULL);
+        }
+
+        // takes the end time for the time measurement
+        struct timespec clock_end_time;
+        if (clock_gettime(CLOCK_MONOTONIC, &clock_end_time) != 0)
+        {
+            handle_error("Error getting end time", &matrix_a, &matrix_b, &result);
+        }
+
+        // calculates the running time of the matrix multiplication
+        time += clock_end_time.tv_sec - clock_start_time.tv_sec + 1e-9 * (clock_end_time.tv_nsec - clock_start_time.tv_nsec);
     }
 
-    // sleep(1) makes sure there is one second between the timing
-    sleep(1);
-
-    // the switch-case block starts the entered version (getopt: -V). If nothing has been entered, version 0 is always executed
-    switch (version)
-    {
-    case 0:
-        matr_mult_ellpack(&matrix_a, &matrix_b, &result);
-        break;
-    case 1:
-        matr_mult_ellpack_V1(&matrix_a, &matrix_b, &result);
-        break;
-    case 2:
-        matr_mult_ellpack_V2(&matrix_a, &matrix_b, &result);
-        break;
-    default:
-        handle_error("Unknown version specified", &matrix_a, &matrix_b, NULL);
-    }
-
-    // takes the end time for the time measurement
-    struct timespec clock_end_time;
-    if (clock_gettime(CLOCK_MONOTONIC, &clock_end_time) != 0)
-    {
-        handle_error("Error getting end time", &matrix_a, &matrix_b, &result);
-    }
-
-    // calculates the running time of the matrix multiplication and outputs (print) it
-    double time = clock_end_time.tv_sec - clock_start_time.tv_sec + 1e-9 * (clock_end_time.tv_nsec - clock_start_time.tv_nsec);
-
-    if (benchmark)
-    {
-        fprintf(stdout, "Execution time: %f seconds\n", time);
-    }
-
+    // calculate the average time and print it
+    time /= benchmark;
+    fprintf(stdout, "Average execution time: %f seconds\n", time);
 
     /*
     Calls the functions that create the output file.
