@@ -12,6 +12,7 @@
 #include "matrix_io.h"
 #include <unistd.h> // sleep
 
+// help and info messages
 const char *usage_msg =
     "Help Message (Usage): "
     "./matrix_mult [-h] [-V version] [-B [iterations]] -a inputA -b inputB -o output\n";
@@ -43,6 +44,8 @@ const char *help_input_files_format =
     "\n"
     "Lines 2 and 3 must contain the correct number of values\n";
 
+
+// functions to print help and info messages
 void print_input_files_format()
 {
     fprintf(stdout, "%s", help_input_files_format);
@@ -60,6 +63,8 @@ void print_help(const char *progname)
     print_input_files_format();
 }
 
+
+// function to free the allocated memory
 void free_matrix(ELLPACKMatrix *matrix)
 {
     if (matrix)
@@ -103,6 +108,7 @@ void free_matrix(ELLPACKMatrix *matrix)
     }
 }
 
+// function to handle the errors central
 void handle_error(const char *message, ELLPACKMatrix *matrix_a, ELLPACKMatrix *matrix_b, ELLPACKMatrix *result)
 {
     free_matrix(matrix_a);
@@ -173,6 +179,7 @@ int main(int argc, char **argv)
         print_usage(progname);
     }
 
+    // reading the ELLPACK input files into the ELLPACKMatrix struct and after that control_indices check the correctness of the input indices
     ELLPACKMatrix matrix_a = {0}, matrix_b = {0}, result = {0};
 
     if (read_matrix(input_file_a, &matrix_a) != 0)
@@ -195,16 +202,19 @@ int main(int argc, char **argv)
         handle_error("in control_indices (B)", &matrix_a, &matrix_b, NULL);
     }
 
-    // clock_start_time clock
+
+
+    // takes the start time for the time measurement
     struct timespec clock_start_time;
     if (clock_gettime(CLOCK_MONOTONIC, &clock_start_time) != 0)
     {
         handle_error("Error getting clock time", &matrix_a, &matrix_b, NULL);
     }
 
-    // ensure one second between time measurement
+    // sleep(1) makes sure there is one second between the timing
     sleep(1);
 
+    // the switch-case block starts the entered version (getopt: -V). If nothing has been entered, version 0 is always executed
     switch (version)
     {
     case 0:
@@ -220,13 +230,14 @@ int main(int argc, char **argv)
         handle_error("Unknown version specified", &matrix_a, &matrix_b, NULL);
     }
 
-    // stop clock
+    // takes the end time for the time measurement
     struct timespec clock_end_time;
     if (clock_gettime(CLOCK_MONOTONIC, &clock_end_time) != 0)
     {
         handle_error("Error getting end time", &matrix_a, &matrix_b, &result);
     }
 
+    // calculates the running time of the matrix multiplication and outputs (print) it
     double time = clock_end_time.tv_sec - clock_start_time.tv_sec + 1e-9 * (clock_end_time.tv_nsec - clock_start_time.tv_nsec);
 
     if (benchmark)
@@ -234,6 +245,11 @@ int main(int argc, char **argv)
         fprintf(stdout, "Execution time: %f seconds\n", time);
     }
 
+
+    /*
+    Calls the functions that create the output file.
+    There are 2 Versions to create the output file. This is because the result arrays of the Versions are different.
+    */
     if (version == 1)
     {
         uint64_t num_non_zero = compute_num_non_zero(&result);
@@ -250,6 +266,7 @@ int main(int argc, char **argv)
         }
     }
 
+    // calls the function to free the allocated memory
     free_matrix(&matrix_a);
     free_matrix(&matrix_b);
     free_matrix(&result);
