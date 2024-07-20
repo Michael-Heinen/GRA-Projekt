@@ -70,6 +70,8 @@ void free_matrix(const ELLPACKMatrix *matrix, int version)
             free(matrix->indices);
         }
 
+        matrix->values = NULL;
+        matrix->indices = NULL;
     }
 }
 

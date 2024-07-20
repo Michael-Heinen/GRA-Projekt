@@ -238,63 +238,7 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
     return 0;
 }
 
-int write_matrix_V1(const char *filename, const ELLPACKMatrix *matrix, uint64_t new_noNonZero)
-{
-    FILE *file = fopen(filename, "w");
-    if (!file)
-    {
-        fprintf(stderr, "Error opening file %s\n", filename);
-        return -1;
-    }
-
-    fprintf(file, "%" PRId64 ",%" PRId64 ",%" PRId64 "\n", matrix->noRows, matrix->noCols, new_noNonZero);
-
-    for (uint64_t i = 0; i < matrix->noRows; ++i)
-    {
-        for (uint64_t j = 0; j < new_noNonZero; j++)
-        {
-            if (matrix->values[i * matrix->noNonZero + j] == 0.0f)
-            {
-                fprintf(file, "%c", '*');
-            }
-            else
-            {
-                fprintf(file, "%f", matrix->values[i * matrix->noNonZero + j]);
-            }
-            if (i * new_noNonZero + j < matrix->noRows * new_noNonZero - 1)
-            {
-                fprintf(file, ",");
-            }
-        }
-    }
-    fprintf(file, "\n");
-
-    for (uint64_t i = 0; i < matrix->noRows; ++i)
-    {
-        for (uint64_t j = 0; j < new_noNonZero; j++)
-        {
-            if (matrix->values[i * matrix->noNonZero + j] == 0.0f)
-            {
-                fprintf(file, "%c", '*');
-            }
-            else
-            {
-                fprintf(file, "%" PRId64, matrix->indices[i * matrix->noNonZero + j]);
-            }
-            if (i * new_noNonZero + j < matrix->noRows * new_noNonZero - 1)
-            {
-                fprintf(file, ",");
-            }
-        }
-    }
-    // fprintf(file, "\n");
-
-    fclose(file);
-    return 0;
-}
-
-
-int write_matrix_V2(const char *filename, const ELLPACKMatrix *matrix)
+int write_matrix(const char *filename, const ELLPACKMatrix *matrix, uint64_t new_noNonZero)
 {
     FILE *file = fopen(filename, "w");
     if (!file)
@@ -350,15 +294,15 @@ int write_matrix_V2(const char *filename, const ELLPACKMatrix *matrix)
 }
 
 // compute noNonZero in result matrix
-int compute_noNonZero(const ELLPACKMatrix *matrix)
+int compute_noNonZero(ELLPACKMatrix *matrix)
 {
     uint64_t maxNoNonZero = 0;
-    for (uint64_t i = 0; i < matrix->noCols; i++)
+    for (uint64_t i = 0; i < matrix->noRows; i++)
     {
         uint64_t tmpNoNonZero = 0;
-        for (uint64_t j = 0; j < matrix->noNonZero; j++)
+        for (uint64_t j = 0; j < matrix->noCols; j++)
         {
-            if (matrix->values[i * matrix->noNonZero + j] == 0.0f)
+            if (matrix->result_values[i][j] == 0.0f)
             {
                 break;
             }
