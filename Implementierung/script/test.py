@@ -39,7 +39,7 @@ def save_matrix_row_by_row(rows, cols, density, filename):
 
             for col in range(cols):
                 if random.random() < density:
-                    value = random.random()
+                    value = random.uniform(-1.0, 1.0)  # Generates a float in the range [-1.0, 1.0]
                     row_values.append(value)
                     row_indices.append(col)
             
