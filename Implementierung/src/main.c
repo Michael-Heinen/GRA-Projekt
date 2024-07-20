@@ -193,6 +193,10 @@ int main(int argc, char **argv)
     case 5:
         matr_mult_ellpack_V5(&matrix_a, &matrix_b, &result);
         break;
+    case 6:
+        matr_mult_ellpack_V6(&matrix_a, &matrix_b, &result);
+        break;
+
     default:
         handle_error("Unknown version specified", &matrix_a, &matrix_b, NULL, version);
     }
@@ -211,7 +215,7 @@ int main(int argc, char **argv)
         fprintf(stdout, "Execution time: %f seconds\n", time);
     }
 
-    if (version == 2 || version == 3)
+    if (version == 2 || version == 3 || version == 6)
     {
         if (write_matrix_V2(output_file, &result) != 0)
         {

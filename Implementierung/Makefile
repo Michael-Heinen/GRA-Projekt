@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c17 -O2 -I$(INC_DIR)
+CFLAGS = -Wall -Wextra -std=c17 -O2 -I$(INC_DIR) -mavx -fopenmp
 
 BUILD_DIR = obj
 SRC_DIR = src
