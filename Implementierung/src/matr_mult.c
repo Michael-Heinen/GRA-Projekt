@@ -6,6 +6,10 @@ void matr_mult_ellpack(const ELLPACKMatrix *restrict matrix_a, const ELLPACKMatr
 {
     if (matrix_a->num_cols != matrix_b->num_rows)
     {
+        free(matrix_a->values);
+        free(matrix_a->indices);
+        free(matrix_b->values);
+        free(matrix_b->indices);
         fprintf(stderr, "Matrix dimensions do not match for multiplication\n");
         exit(EXIT_FAILURE);
     }
@@ -18,6 +22,10 @@ void matr_mult_ellpack(const ELLPACKMatrix *restrict matrix_a, const ELLPACKMatr
 
     if (!matrix_result->result_values || !matrix_result->result_indices)
     {
+        free(matrix_a->values);
+        free(matrix_a->indices);
+        free(matrix_b->values);
+        free(matrix_b->indices);
         free(matrix_result->result_values);
         free(matrix_result->result_indices);
         fprintf(stderr, "Memory allocation failed (matr_mult_ellpack_V3 (V3))\n");
@@ -45,6 +53,11 @@ void matr_mult_ellpack(const ELLPACKMatrix *restrict matrix_a, const ELLPACKMatr
                 free(matrix_result->result_values[i]);
                 free(matrix_result->result_indices[i]);
             }
+
+            free(matrix_a->values);
+            free(matrix_a->indices);
+            free(matrix_b->values);
+            free(matrix_b->indices);
             free(matrix_result->result_values);
             free(matrix_result->result_indices);
             fprintf(stderr, "Memory allocation failed (matr_mult_ellpack_V3)\n");

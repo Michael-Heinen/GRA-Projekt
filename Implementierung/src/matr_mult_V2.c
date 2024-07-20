@@ -9,6 +9,10 @@ void matr_mult_ellpack_V2(const ELLPACKMatrix *restrict matrix_a, const ELLPACKM
     // Check if the number of columns in matrix_a is equal to the number of rows in matrix_b
     if (matrix_a->num_cols != matrix_b->num_rows)
     {
+        free(matrix_a->values);
+        free(matrix_a->indices);
+        free(matrix_b->values);
+        free(matrix_b->indices);
         fprintf(stderr, "Matrix dimensions do not match for multiplication\n");
         exit(EXIT_FAILURE);
     }
@@ -22,6 +26,10 @@ void matr_mult_ellpack_V2(const ELLPACKMatrix *restrict matrix_a, const ELLPACKM
 
     if (!matrix_result->result_values || !matrix_result->result_indices)
     {
+        free(matrix_a->values);
+        free(matrix_a->indices);
+        free(matrix_b->values);
+        free(matrix_b->indices);
         free(matrix_result->result_values);
         free(matrix_result->result_indices);
         fprintf(stderr, "Memory allocation failed (matr_mult_ellpack_V2 (V2))\n");
@@ -34,6 +42,10 @@ void matr_mult_ellpack_V2(const ELLPACKMatrix *restrict matrix_a, const ELLPACKM
     
     if (!temp_values_row_b)
         {
+            free(matrix_a->values);
+            free(matrix_a->indices);
+            free(matrix_b->values);
+            free(matrix_b->indices);
             free(temp_values_row_b);
             free(matrix_result->result_values);
             free(matrix_result->result_indices);
@@ -56,7 +68,11 @@ void matr_mult_ellpack_V2(const ELLPACKMatrix *restrict matrix_a, const ELLPACKM
                 free(matrix_result->result_values[i]);
                 free(matrix_result->result_indices[i]);
             }
-            
+
+            free(matrix_a->values);
+            free(matrix_a->indices);
+            free(matrix_b->values);
+            free(matrix_b->indices);
             free(temp_values_row_b);
             free(matrix_result->result_values);
             free(matrix_result->result_indices);
