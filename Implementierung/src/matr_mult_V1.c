@@ -2,57 +2,57 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void matr_mult_ellpack_V1(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMatrix *result)
+void matr_mult_ellpack_V1(const ELLPACKMatrix *restrict matrix_a, const ELLPACKMatrix *restrict matrix_b, ELLPACKMatrix *restrict matrix_result)
 {
-    if (a->noCols != b->noRows)
+    if (matrix_a->noCols != matrix_b->noRows)
     {
         fprintf(stderr, "Matrix dimensions do not match for multiplication (matr_mult_ellpack_V1 (V1))\n");
         exit(EXIT_FAILURE);
     }
 
-    result->noRows = a->noRows;
-    result->noCols = b->noCols;
-    result->noNonZero = b->noCols;
+    matrix_result->noRows = matrix_a->noRows;
+    matrix_result->noCols = matrix_b->noCols;
+    matrix_result->noNonZero = matrix_b->noCols;
 
-    result->values = (float *)calloc(result->noRows * result->noNonZero, sizeof(float));
-    result->indices = (uint64_t *)calloc(result->noRows * result->noNonZero, sizeof(uint64_t));
+    matrix_result->values = (float *)calloc(matrix_result->noRows * matrix_result->noNonZero, sizeof(float));
+    matrix_result->indices = (uint64_t *)calloc(matrix_result->noRows * matrix_result->noNonZero, sizeof(uint64_t));
 
-    if (!result->values || !result->indices)
+    if (!matrix_result->values || !matrix_result->indices)
     {
-        free(result->values);
-        free(result->indices);
+        free(matrix_result->values);
+        free(matrix_result->indices);
         fprintf(stderr, "Memory allocation failed (matr_mult_ellpack_V1 (V1))\n");
         exit(EXIT_FAILURE);
     }
 
-    for (uint64_t i = 0; i < a->noRows; ++i)
+    for (uint64_t i = 0; i < matrix_a->noRows; ++i)
     {
-        for (uint64_t k = 0; k < a->noNonZero; ++k)
+        for (uint64_t k = 0; k < matrix_a->noNonZero; ++k)
         {
-            uint64_t a_index = i * a->noNonZero + k;
-            float a_value = a->values[a_index];
+            uint64_t a_index = i * matrix_a->noNonZero + k;
+            float a_value = matrix_a->values[a_index];
             if (a_value == 0.0)
             {
                 continue;
             }
-            uint64_t a_col = a->indices[a_index];
+            uint64_t a_col = matrix_a->indices[a_index];
 
-            for (uint64_t l = 0; l < b->noNonZero; ++l)
+            for (uint64_t l = 0; l < matrix_b->noNonZero; ++l)
             {
-                uint64_t b_index = a_col * b->noNonZero + l;
-                float b_value = b->values[b_index];
+                uint64_t b_index = a_col * matrix_b->noNonZero + l;
+                float b_value = matrix_b->values[b_index];
                 if (b_value == 0.0f)
                 {
                     continue;
                 }
-                uint64_t b_col = b->indices[b_index];
+                uint64_t b_col = matrix_b->indices[b_index];
 
-                for (uint64_t m = 0; m < result->noNonZero; m++)
+                for (uint64_t m = 0; m < matrix_result->noNonZero; m++)
                 {
-                    if (result->values[i * result->noNonZero + m] == 0.0f || result->indices[i * result->noNonZero + m] == b_col)
+                    if (matrix_result->values[i * matrix_result->noNonZero + m] == 0.0f || matrix_result->indices[i * matrix_result->noNonZero + m] == b_col)
                     {
-                        result->values[i * result->noNonZero + m] += a_value * b_value;
-                        result->indices[i * result->noNonZero + m] = b_col;
+                        matrix_result->values[i * matrix_result->noNonZero + m] += a_value * b_value;
+                        matrix_result->indices[i * matrix_result->noNonZero + m] = b_col;
                         break;
                     }
                 }
