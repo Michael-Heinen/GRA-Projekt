@@ -4,7 +4,7 @@
 #include <immintrin.h>
 
 // Function to multiply two matrices in ELLPACK format
-void matr_mult_ellpack_V2(const ELLPACKMatrix *matrixA, const ELLPACKMatrix *matrixB, ELLPACKMatrix *resultMatrix)
+void matr_mult_ellpack_V2(const ELLPACKMatrix *matrixA, const ELLPACKMatrix *matrixB, ELLPACKMatrix *result)
 {
     // Check if the number of columns in matrixA is equal to the number of rows in matrixB
     if (matrixA->noCols != matrixB->noRows)
@@ -14,35 +14,34 @@ void matr_mult_ellpack_V2(const ELLPACKMatrix *matrixA, const ELLPACKMatrix *mat
     }
 
     // Initialize the result matrix dimensions and allocate space for values and indices
-    resultMatrix->noRows = matrixA->noRows;
-    resultMatrix->noCols = matrixB->noCols;
-    resultMatrix->noNonZero = matrixB->noCols;
+    result->noRows = matrixA->noRows;
+    result->noCols = matrixB->noCols;
+    result->noNonZero = matrixB->noCols;
 
-    resultMatrix->values = (float *)calloc(resultMatrix->noRows * resultMatrix->noNonZero, sizeof(float));
-    resultMatrix->indices = (uint64_t *)calloc(resultMatrix->noRows * resultMatrix->noNonZero, sizeof(uint64_t));
+    result->result_values = (float **)calloc(result->noRows, sizeof(float*));
+    result->result_indices = (uint64_t **)calloc(result->noRows, sizeof(uint64_t*));
 
-    if (!resultMatrix->values || !resultMatrix->indices)
+    if (!result->result_values || !result->result_indices)
     {
-        free(resultMatrix->values);
-        free(resultMatrix->indices);
+        free(result->result_values);
+        free(result->result_indices);
         fprintf(stderr, "Memory allocation failed (matr_mult_ellpack_V2 (V2))\n");
         exit(EXIT_FAILURE);
     }
 
     // Allocate temporary arrays to store intermediate results for the current row
-    float *tempValues = (float *)calloc(resultMatrix->noCols, sizeof(float));
-    uint64_t *tempIndices = (uint64_t *)calloc(resultMatrix->noCols, sizeof(uint64_t));
+
     float *tempBRowValues = (float *)calloc(matrixB->noCols, sizeof(float));
+
+    uint64_t max_non_zero = 0;
 
     // Loop through each row of matrixA
     for (uint64_t rowA = 0; rowA < matrixA->noRows; ++rowA)
     {
-        // Reset the temporary arrays for the new row of matrixA
-        for (uint64_t i = 0; i < resultMatrix->noCols; ++i)
-        {
-            tempValues[i] = 0.0f;
-            tempIndices[i] = 0;
-        }
+        result->result_values[rowA] = (float *)calloc(result->noCols, sizeof(float));
+        result->result_indices[rowA] = (uint64_t *)calloc(result->noCols, sizeof(uint64_t));
+
+
 
         // Loop through each non-zero element in the current row of matrixA
         for (uint64_t nzIndexA = 0; nzIndexA < matrixA->noNonZero; ++nzIndexA)
@@ -69,7 +68,7 @@ void matr_mult_ellpack_V2(const ELLPACKMatrix *matrixA, const ELLPACKMatrix *mat
                 uint64_t valB = matrixB->values[indexB];
                 tempBRowValues[colB] += matrixB->values[indexB];
                 // Store the column index in the temporary indices array
-                tempIndices[colB] = colB;
+                result->result_indices[rowA][colB] = colB;
             }
 
             // Loop through the temporary B row array in chunks of 4 elements (SIMD width)
@@ -78,11 +77,11 @@ void matr_mult_ellpack_V2(const ELLPACKMatrix *matrixA, const ELLPACKMatrix *mat
                 // Load 4 values from the temporary B row array into a SIMD register
                 __m128 simdValuesB = _mm_loadu_ps(&tempBRowValues[colB]);
                 // Load 4 values from the temporary values array into a SIMD register
-                __m128 simdTempValues = _mm_loadu_ps(&tempValues[colB]);
+                __m128 simdTempValues = _mm_loadu_ps(&result->result_values[rowA][colB]);
                 // Multiply and accumulate the values
                 simdTempValues = _mm_add_ps(simdTempValues, _mm_mul_ps(simdValueA, simdValuesB));
                 // Store the result back into the temporary values array
-                _mm_storeu_ps(&tempValues[colB], simdTempValues);
+                _mm_storeu_ps(&result->result_values[rowA][colB], simdTempValues);
             }
 
             float a_value = matrixA->values[indexA];
@@ -90,7 +89,7 @@ void matr_mult_ellpack_V2(const ELLPACKMatrix *matrixA, const ELLPACKMatrix *mat
             for (uint64_t remainB_Index = 0; remainB_Index < matrixB->noCols % 4; remainB_Index++)
             {
                 float calc = tempBRowValues[baseIndexB + remainB_Index] * a_value;
-                tempValues[baseIndexB + remainB_Index] += calc;
+                result->result_values[rowA][baseIndexB + remainB_Index] += calc;
             }
 
             // Reset the temporary B row array for the next iteration
@@ -101,23 +100,26 @@ void matr_mult_ellpack_V2(const ELLPACKMatrix *matrixA, const ELLPACKMatrix *mat
         }
 
         // Transfer the non-zero values from the temporary values array to the result matrix
-        uint64_t nzCountResult = 0;
-        for (uint64_t colResult = 0; colResult < resultMatrix->noCols; ++colResult)
+        uint64_t cnt_non_zero = 0;
+        for (uint64_t colResult = 0; colResult < result->noCols; ++colResult)
         {
-            if (tempValues[colResult] != 0.0f)
+            if (result->result_values[rowA][colResult] != 0.0f)
             {
-                // Calculate the index for the current non-zero element in the result matrix
-                uint64_t resultIndex = rowA * resultMatrix->noNonZero + nzCountResult;
-                // Store the value and index in the result matrix
-                resultMatrix->values[resultIndex] = tempValues[colResult];
-                resultMatrix->indices[resultIndex] = tempIndices[colResult];
-                nzCountResult++;
+                // Store the value and index in the9 result matrix
+                result->result_values[rowA][cnt_non_zero] = result->result_values[rowA][colResult];
+                result->result_indices[rowA][cnt_non_zero] = result->result_indices[rowA][colResult];
+                cnt_non_zero++;
             }
+        }
+
+        if (cnt_non_zero > max_non_zero)
+        {
+            max_non_zero = cnt_non_zero;
         }
     }
 
+    result->noNonZero = max_non_zero;
+
     // Free the allocated memory for the temporary arrays
-    free(tempValues);
-    free(tempIndices);
     free(tempBRowValues);
 }
