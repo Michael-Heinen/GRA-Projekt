@@ -37,23 +37,45 @@ void print_help(const char *progname)
     fprintf(stdout, "\n%s", help_msg);
 }
 
-void free_matrix(ELLPACKMatrix *matrix)
+void free_matrix(ELLPACKMatrix *matrix, int version)
 {
     if (matrix)
     {
-        free(matrix->values);
-        free(matrix->indices);
+        if (version == 2 || version == 3)
+        {
+            if (matrix->result_values)
+            {
+                for (uint64_t i = 0; i < matrix->noCols; i++)
+                {
+                    free(matrix->result_values[i]);
+                }
 
-        matrix->values = NULL;
-        matrix->indices = NULL;
+                free(matrix->result_values);
+            }
+
+            if (matrix->result_indices)
+            {
+                for (uint64_t i = 0; i < matrix->noCols; i++)
+                {
+                    free(matrix->result_indices[i]);
+                }
+
+                free(matrix->result_indices);
+            }
+        }
+        else
+        {
+            free(matrix->values);
+            free(matrix->indices);
+        }
     }
 }
 
-void handle_error(const char *message, ELLPACKMatrix *matrix_a, ELLPACKMatrix *matrix_b, ELLPACKMatrix *result)
+void handle_error(const char *message, ELLPACKMatrix *matrix_a, ELLPACKMatrix *matrix_b, ELLPACKMatrix *result, int version)
 {
-    free_matrix(matrix_a);
-    free_matrix(matrix_b);
-    free_matrix(result);
+    free_matrix(matrix_a, version);
+    free_matrix(matrix_b, version);
+    free_matrix(result, version);
 
     if (errno == 0)
     {
@@ -109,42 +131,42 @@ int main(int argc, char **argv)
             break;
         default:
             print_usage(progname);
-            handle_error("Wrong format: look at Help Message (Usage)", NULL, NULL, NULL);
+            handle_error("Wrong format: look at Help Message (Usage)", NULL, NULL, NULL, version);
         }
     }
 
     if (!input_file_a || !input_file_b || !output_file)
     {
-        handle_error("Error: Wrong input/output formatting: Input and output files must be specified", NULL, NULL, NULL);
+        handle_error("Error: Wrong input/output formatting: Input and output files must be specified", NULL, NULL, NULL, version);
     }
 
     ELLPACKMatrix matrix_a = {0}, matrix_b = {0}, result = {0};
 
     if (read_matrix(input_file_a, &matrix_a) != 0)
     {
-        handle_error("Error reading input matrix A", &matrix_a, NULL, NULL);
+        handle_error("Error reading input matrix A", &matrix_a, NULL, NULL, version);
     }
 
-    if (read_matrix(input_file_b, &matrix_b) !=0)
+    if (read_matrix(input_file_b, &matrix_b) != 0)
     {
-        handle_error("Error reading input matrix B", &matrix_a, &matrix_b, NULL);
+        handle_error("Error reading input matrix B", &matrix_a, &matrix_b, NULL, version);
     }
 
-    if (control_indices(input_file_a, &matrix_a) !=0)
+    if (control_indices(input_file_a, &matrix_a) != 0)
     {
-        handle_error("in control_indices_inputs (A)", &matrix_a, &matrix_b, NULL);
+        handle_error("in control_indices_inputs (A)", &matrix_a, &matrix_b, NULL, version);
     }
 
-    if (control_indices(input_file_b, &matrix_b) !=0)
+    if (control_indices(input_file_b, &matrix_b) != 0)
     {
-        handle_error("in control_indices (B)", &matrix_a, &matrix_b, NULL);
+        handle_error("in control_indices (B)", &matrix_a, &matrix_b, NULL, version);
     }
 
     // start clock
     struct timespec start;
     if (clock_gettime(CLOCK_MONOTONIC, &start) != 0)
     {
-        handle_error("Error getting start time", &matrix_a, &matrix_b, NULL);
+        handle_error("Error getting start time", &matrix_a, &matrix_b, NULL, version);
     }
 
     // ensure one second between time measurement
@@ -168,14 +190,14 @@ int main(int argc, char **argv)
         matr_mult_ellpack_V4(&matrix_a, &matrix_b, &result);
         break;
     default:
-        handle_error("Unknown version specified", &matrix_a, &matrix_b, NULL);
+        handle_error("Unknown version specified", &matrix_a, &matrix_b, NULL, version);
     }
 
     // stop clock
     struct timespec end;
     if (clock_gettime(CLOCK_MONOTONIC, &end) != 0)
     {
-        handle_error("Error getting end time", &matrix_a, &matrix_b, &result);
+        handle_error("Error getting end time", &matrix_a, &matrix_b, &result, version);
     }
 
     double time = end.tv_sec - start.tv_sec + 1e-9 * (end.tv_nsec - start.tv_nsec);
@@ -185,17 +207,26 @@ int main(int argc, char **argv)
         fprintf(stdout, "Execution time: %f seconds\n", time);
     }
 
-    uint64_t new_noNonZero = compute_noNonZero(&result);
-
-    if (write_matrix(output_file, &result, new_noNonZero) != 0)
+    if (version == 2 || version == 3)
     {
-        handle_error("Error writing output matrix", &matrix_a, &matrix_b, &result);
+        if (write_matrix_V2(output_file, &result) != 0)
+        {
+            handle_error("Error writing output matrix", &matrix_a, &matrix_b, &result, version);
+        }
+    }
+    else
+    {
+        uint64_t new_noNonZero = compute_noNonZero(&result);
+
+        if (write_matrix_V1(output_file, &result, new_noNonZero) != 0)
+        {
+            handle_error("Error writing output matrix", &matrix_a, &matrix_b, &result, version);
+        }
     }
 
-    free_matrix(&matrix_a);
-    free_matrix(&matrix_b);
-    free_matrix(&result);
+    free_matrix(&matrix_a, version);
+    free_matrix(&matrix_b, version);
+    free_matrix(&result, version);
 
     return EXIT_SUCCESS;
 }
-

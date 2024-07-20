@@ -78,6 +78,7 @@ def delete_files_in_directory(directory_path):
             if os.path.isfile(file_path):
                 os.remove(file_path)
         print(f"All files in {directory_path} deleted successfully.")
+        print(f"All files in {directory_path} deleted successfully.")
     except OSError:
         print("Error occurred while deleting files.")
 
@@ -140,6 +141,17 @@ def load_and_clean_matrix(filename):
                     row_counter += 1
         except ValueError as e:
             return values
+        try:
+            for val, idx in zip(value_row, index_row):
+                if val != "*" and idx != "*":
+                    col_index = int(idx)
+                    values[row_counter, col_index] = float(val)
+                count += 1
+                if count >= max_nonzeros:
+                    count = 0
+                    row_counter += 1
+        except ValueError as e:
+            return values
 
     return values
 
@@ -154,10 +166,22 @@ def run_isolated_test(command, timeout):
         stdout, stderr = process.communicate()
         return -1, stdout, stderr, True
 
+def run_isolated_test(command, timeout):
+    try:
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=BASE_DIR)
+        stdout, stderr = process.communicate(timeout=timeout)
+        return process.returncode, stdout, stderr, False
+    except subprocess.TimeoutExpired:
+        process.kill()
+        stdout, stderr = process.communicate()
+        return -1, stdout, stderr, True
+
 
 # Function to run the tests
 def run_tests(num_runs, timeout=60):
     performance_results = {impl: [] for impl in IMPLEMENTATIONS}
+    timed_out_versions = set()
+
     timed_out_versions = set()
 
     for size in MATRIX_SIZES:
@@ -179,10 +203,16 @@ def run_tests(num_runs, timeout=60):
                         print(f"Run {i+1} for V{impl} timed out.")
                         timed_out_versions.add(impl)
                         break  # Skip further runs for this implementation
+                    returncode, stdout, stderr, timed_out = run_isolated_test(command, timeout)
+                    if timed_out:
+                        print(f"Run {i+1} for V{impl} timed out.")
+                        timed_out_versions.add(impl)
+                        break  # Skip further runs for this implementation
                     if returncode == 0:
                         execution_time = parse_execution_time(stdout.decode())
                         if execution_time is not None:
                             execution_times.append(execution_time)
+
 
                         else:
                             print("Failed to parse execution time from the output.")
@@ -210,6 +240,7 @@ def run_tests(num_runs, timeout=60):
                         print(f"Output correctness: FAILED")
 
     return performance_results       
+    return performance_results       
 
 # Function to run edge case tests
 def run_edge_case_tests():
@@ -236,6 +267,7 @@ if __name__ == "__main__":
     parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[8, 16, 32, 64, 128, 256, 512,750, 1024,1535 ,2048, 3064, 4096], help='List of matrix sizes')#6045, 8054, 10564, 12354]
     parser.add_argument('-n','--num_runs', type=int, default=1, help='Number of runs for each test')
     parser.add_argument('-tmo','--timeout', type=int, default=60, help='Timeout for each test in seconds')
+    parser.add_argument('-tmo','--timeout', type=int, default=60, help='Timeout for each test in seconds')
 
     parser.add_argument('-c', '--compile', action='store_false', help='Does NOT Compile the implementations')
     parser.add_argument('-g', '--generate', action='store_true', help='Generate new test matrices for all specified indices')
@@ -251,6 +283,8 @@ if __name__ == "__main__":
     MATRIX_SIZES = args.matrix_sizes
     IMPLEMENTATIONS = args.versions
     TESTING = args.testing
+    GPU = args.gpu
+    COMPARE = args.compare
     GPU = args.gpu
     COMPARE = args.compare
 
@@ -280,5 +314,6 @@ if __name__ == "__main__":
     
     # Run edge case tests
     if(args.edge):
+        generate_edge_case_matrices()
         generate_edge_case_matrices()
         run_edge_case_tests()

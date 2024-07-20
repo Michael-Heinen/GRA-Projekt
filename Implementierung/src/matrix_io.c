@@ -1,4 +1,5 @@
 #include "ellpack.h"
+#include "matrix_io.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
@@ -8,6 +9,7 @@
 
 int read_matrix(const char *filename, ELLPACKMatrix *matrix)
 {
+    // open input file
     FILE *file = fopen(filename, "r");
     if (!file)
     {
@@ -21,8 +23,9 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
     long file_pos_gets;
     long file_pos_scan;
 
-    //line 1
-    if ((read = getline(&line, &len, file)) == -1) {
+    // check first line of the file (count_number_in_line counts the numbers of values)
+    if ((read = getline(&line, &len, file)) == -1)
+    {
         fprintf(stderr, "Error reading line 1 (dimension).\n");
         free(line);
         fclose(file);
@@ -37,6 +40,7 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
         return -1;
     }
 
+    // save "file check position" can check the next lines and set file position to zero to read in the dimension (line 1)
     file_pos_gets = ftell(file);
     fseek(file, 0, SEEK_SET);
 
@@ -48,6 +52,7 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
         return -1;
     }
 
+    // check all values of the dimension (rows and columns must not be 0 / rows,columns and noNonZero must not be negative / noNonZero must not be larger than the rows)
     if (matrix->noRows == 0 || matrix->noCols == 0)
     {
         fprintf(stderr, "Error: Rows or Cols equals 0. Filename: %s\n", filename);
@@ -71,14 +76,16 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
         fclose(file);
         return -1;
     }
+
+    // save "file scan position" (reading position (fscanf)) and set file position to the old "file check position"
     file_pos_scan = ftell(file);
     fseek(file, file_pos_gets, SEEK_SET);
 
-
- if (matrix->noNonZero != 0)
+    if (matrix->noNonZero != 0)
     {
-        //line 2
-        if ((read = getline(&line, &len, file)) == -1) {
+        // line 2
+        if ((read = getline(&line, &len, file)) == -1)
+        {
             fprintf(stderr, "Error reading line 2 (values).\n");
             free(line);
             fclose(file);
@@ -93,8 +100,9 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
             return -1;
         }
 
-        //line 3
-        if ((read = getline(&line, &len, file)) == -1) {
+        // line 3
+        if ((read = getline(&line, &len, file)) == -1)
+        {
             fprintf(stderr, "Error reading line 3 (indices).\n");
             free(line);
             fclose(file);
@@ -144,7 +152,6 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
                 return -1;
             }
         }
-
     }
     else
     {
@@ -154,6 +161,7 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
         return -1;
     }
 
+    // set file position to the old "file scan position" to scan the values and indices lines (line 2 and 3)
     fseek(file, file_pos_scan, SEEK_SET);
 
     matrix->values = (float *)malloc(matrix->noRows * matrix->noNonZero * sizeof(float));
@@ -187,9 +195,12 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
                 free(line);
                 fclose(file);
             }
-        } else {
+        }
+        else
+        {
             ungetc(ch, file); // Put back the character if it's not '*'
-            if (fscanf(file, "%f,", &matrix->values[i]) != 1) {
+            if (fscanf(file, "%f,", &matrix->values[i]) != 1)
+            {
                 fprintf(stderr, "Error reading value from file %s\n", filename);
                 free(line);
                 fclose(file);
@@ -221,7 +232,9 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
                     return -1;
                 }
             }
-        } else {
+        }
+        else
+        {
             ungetc(ch, file);
             if (fscanf(file, "%" SCNu64 ",", &matrix->indices[i]) != 1)
             {
@@ -237,7 +250,7 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
     return 0;
 }
 
-int write_matrix(const char *filename, const ELLPACKMatrix *matrix, uint64_t new_noNonZero)
+int write_matrix_V1(const char *filename, const ELLPACKMatrix *matrix, uint64_t new_noNonZero)
 {
     FILE *file = fopen(filename, "w");
     if (!file)
@@ -292,6 +305,61 @@ int write_matrix(const char *filename, const ELLPACKMatrix *matrix, uint64_t new
     return 0;
 }
 
+int write_matrix_V2(const char *filename, const ELLPACKMatrix *matrix)
+{
+    FILE *file = fopen(filename, "w");
+    if (!file)
+    {
+        fprintf(stderr, "Error opening file %s\n", filename);
+        return -1;
+    }
+
+    fprintf(file, "%" PRId64 ",%" PRId64 ",%" PRId64 "\n", matrix->noRows, matrix->noCols, matrix->noNonZero);
+
+    for (uint64_t i = 0; i < matrix->noRows; ++i)
+    {
+        for (uint64_t j = 0; j < matrix->noNonZero; j++)
+        {
+            if (matrix->result_values[i][j] == 0.0f)
+            {
+                fprintf(file, "%c", '*');
+            }
+            else
+            {
+                fprintf(file, "%f", matrix->result_values[i][j]);
+            }
+            if (i * matrix->noNonZero + j < matrix->noRows * matrix->noNonZero - 1)
+            {
+                fprintf(file, ",");
+            }
+        }
+    }
+    fprintf(file, "\n");
+
+    for (uint64_t i = 0; i < matrix->noRows; ++i)
+    {
+        for (uint64_t j = 0; j < matrix->noNonZero; j++)
+        {
+            if (matrix->result_values[i][j] == 0.0f)
+            {
+                fprintf(file, "%c", '*');
+            }
+            else
+            {
+                fprintf(file, "%" PRId64, matrix->result_indices[i][j]);
+            }
+            if (i * matrix->noNonZero + j < matrix->noRows * matrix->noNonZero - 1)
+            {
+                fprintf(file, ",");
+            }
+        }
+    }
+    // fprintf(file, "\n");
+
+    fclose(file);
+    return 0;
+}
+
 // compute noNonZero in result matrix
 int compute_noNonZero(ELLPACKMatrix *matrix)
 {
@@ -315,12 +383,14 @@ int compute_noNonZero(ELLPACKMatrix *matrix)
     return maxNoNonZero;
 }
 
-int count_numbers_in_line(const char *line) {
+int count_numbers_in_line(const char *line)
+{
     int count = 0;
     char *token = strtok(line, ",");
     char *last_token = NULL;
 
-    while (token != NULL) {
+    while (token != NULL)
+    {
         count++;
         token = strtok(NULL, ",");
     }
@@ -332,47 +402,47 @@ int control_indices(const char *filename, const ELLPACKMatrix *matrix)
 {
     for (uint64_t i = 0; i < matrix->noCols; i++)
     {
-        bool* temp_array = (bool *)calloc(matrix->noRows, sizeof(bool));
+        bool *temp_array = (bool *)calloc(matrix->noRows, sizeof(bool));
         bool firstZero = false;
         bool secondZero = false;
 
-            for(uint64_t j = 0; j < matrix->noNonZero; j++)
+        for (uint64_t j = 0; j < matrix->noNonZero; j++)
+        {
+            if ((temp_array[matrix->indices[i * matrix->noNonZero + j]] || secondZero) && matrix->indices[i * matrix->noNonZero + j] != 0)
             {
-                if ((temp_array[matrix->indices[i * matrix->noNonZero + j]] || secondZero) && matrix->indices[i * matrix->noNonZero + j] != 0)
+                fprintf(stderr, "Error: Double indices in row or wrong order. Filename: %s\n", filename);
+                return -1;
+            }
+            else if (matrix->indices[i * matrix->noNonZero + j] >= matrix->noRows)
+            {
+                fprintf(stderr, "Error: Index larger then rows (Index out of bound). Filename: %s\n", filename);
+                return -1;
+            }
+            else if (matrix->indices[i * matrix->noNonZero + j] != 0)
+            {
+                temp_array[matrix->indices[i * matrix->noNonZero + j]] = true;
+            }
+            else
+            {
+                if (firstZero)
                 {
-                    fprintf(stderr,"Error: Double indices in row or wrong order. Filename: %s\n", filename);
-                    return -1;
-                }
-                else if (matrix->indices[i * matrix->noNonZero + j] >= matrix->noRows)
-                {
-                    fprintf(stderr,"Error: Index larger then rows (Index out of bound). Filename: %s\n", filename);
-                    return -1;
-                }
-                else if (matrix->indices[i*matrix->noNonZero+j] != 0)
-                {
-                    temp_array[matrix->indices[i * matrix->noNonZero + j]] = true;
-                }
-                else
-                {
-                    if (firstZero)
+                    if (matrix->values[i * matrix->noNonZero + j] != 0)
                     {
-                        if (matrix->values[i*matrix->noNonZero+j] !=0)
-                        {
-                            fprintf(stderr,"Error: Double indices (zero) in row or wrong values. Filename: %s\n", filename);
-                            return -1;
-                        }
-                        else
-                        {
-                            secondZero = true;
-                        }
+                        fprintf(stderr, "Error: Double indices (zero) in row or wrong values. Filename: %s\n", filename);
+                        return -1;
                     }
                     else
                     {
-                        temp_array[matrix->indices[i * matrix->noNonZero + j]] = true;
-                        firstZero = true;
+                        secondZero = true;
                     }
                 }
+                else
+                {
+                    temp_array[matrix->indices[i * matrix->noNonZero + j]] = true;
+                    firstZero = true;
+                }
             }
+        }
         free(temp_array);
     }
 
