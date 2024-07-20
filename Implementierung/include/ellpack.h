@@ -18,8 +18,5 @@ typedef struct
 void matr_mult_ellpack(const ELLPACKMatrix *matrix_a, const ELLPACKMatrix *matrix_b, ELLPACKMatrix *matrix_result);
 void matr_mult_ellpack_V1(const ELLPACKMatrix *matrix_a, const ELLPACKMatrix *matrix_b, ELLPACKMatrix *matrix_result);
 void matr_mult_ellpack_V2(const ELLPACKMatrix *matrix_a, const ELLPACKMatrix *matrix_b, ELLPACKMatrix *matrix_result);
-void matr_mult_ellpack_V3(const ELLPACKMatrix *matrix_a, const ELLPACKMatrix *matrix_b, ELLPACKMatrix *matrix_result);
-void matr_mult_ellpack_V4(const ELLPACKMatrix *matrix_a, const ELLPACKMatrix *matrix_b, ELLPACKMatrix *matrix_result);
-void matr_mult_ellpack_V5(const ELLPACKMatrix *matrix_a, const ELLPACKMatrix *matrix_b, ELLPACKMatrix *matrix_result);
 
 #endif // ELLPACK_H

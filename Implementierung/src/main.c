@@ -62,32 +62,33 @@ void free_matrix(ELLPACKMatrix *matrix, int version)
 {
     if (matrix)
     {
-        if (version == 2 || version == 3)
-        {
-            if (matrix->result_values)
-            {
-                for (uint64_t i = 0; i < matrix->num_cols; i++)
-                {
-                    free(matrix->result_values[i]);
-                }
-
-                free(matrix->result_values);
-            }
-
-            if (matrix->result_indices)
-            {
-                for (uint64_t i = 0; i < matrix->num_cols; i++)
-                {
-                    free(matrix->result_indices[i]);
-                }
-
-                free(matrix->result_indices);
-            }
-        }
-        else
+        if (version == 1)
         {
             free(matrix->values);
             free(matrix->indices);
+
+        }
+        else
+        {
+            if (matrix->result_values)
+                {
+                    for (uint64_t i = 0; i < matrix->num_cols; i++)
+                    {
+                        free(matrix->result_values[i]);
+                    }
+
+                    free(matrix->result_values);
+                }
+
+                if (matrix->result_indices)
+                {
+                    for (uint64_t i = 0; i < matrix->num_cols; i++)
+                    {
+                        free(matrix->result_indices[i]);
+                    }
+
+                    free(matrix->result_indices);
+                }
         }
     }
 }
@@ -205,15 +206,6 @@ int main(int argc, char **argv)
     case 2:
         matr_mult_ellpack_V2(&matrix_a, &matrix_b, &result);
         break;
-    case 3:
-        matr_mult_ellpack_V3(&matrix_a, &matrix_b, &result);
-        break;
-    case 4:
-        matr_mult_ellpack_V4(&matrix_a, &matrix_b, &result);
-        break;
-    case 5:
-        matr_mult_ellpack_V5(&matrix_a, &matrix_b, &result);
-        break;
     default:
         handle_error("Unknown version specified", &matrix_a, &matrix_b, NULL, version);
     }
@@ -232,17 +224,17 @@ int main(int argc, char **argv)
         fprintf(stdout, "Execution time: %f seconds\n", time);
     }
 
-    if (version == 2 || version == 3)
+    if (version == 1)
     {
-        if (write_matrix_V2(output_file, &result) != 0)
+        uint64_t num_non_zero = compute_num_non_zero(&result);
+        if (write_matrix_V1(output_file, &result, num_non_zero) != 0)
         {
             handle_error("Error writing output matrix", &matrix_a, &matrix_b, &result, version);
         }
     }
     else
     {
-        uint64_t num_non_zero = compute_num_non_zero(&result);
-        if (write_matrix_V1(output_file, &result, num_non_zero) != 0)
+        if (write_matrix_V2(output_file, &result) != 0)
         {
             handle_error("Error writing output matrix", &matrix_a, &matrix_b, &result, version);
         }
