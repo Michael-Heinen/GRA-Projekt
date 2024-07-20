@@ -2,36 +2,12 @@ import os
 import subprocess
 import numpy as np
 import cupy as cp
-import matplotlib.pyplot as plt
 import argparse
 import time
 import random
 
-# Base directories
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-BASE_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
-
-FILES_DIR = os.path.join(BASE_DIR, 'files')
-RESULTS_DIR = os.path.join(FILES_DIR, 'results')
-TEST_MATRICES_DIR = os.path.join(FILES_DIR, 'test_matrices')
-EDGE_MATRICES_DIR = os.path.join(FILES_DIR, 'edge_matrices')
-
-# Ensure directories exist
-os.makedirs(FILES_DIR, exist_ok=True)
-os.makedirs(RESULTS_DIR, exist_ok=True)
-os.makedirs(TEST_MATRICES_DIR, exist_ok=True)
-os.makedirs(EDGE_MATRICES_DIR, exist_ok=True)
-
-# Constants
-EDGE_CASES = [
-    ("empty_matrix", (0, 0)),  # Empty matrix
-    ("single_element", (1, 1)),  # Single element matrix
-    ("all_zeros", (4, 4, 0.0)),  # All elements are zero
-    ("large_values", (4, 4, lambda: np.random.uniform(1e10, 1e12))),  # Very large values
-    ("small_values", (4, 4, lambda: np.random.uniform(-1e12, -1e10))),  # Very small (negative) values
-    ("rectangular", (4, 2)),  # Rectangular matrix
-    ("sparse", (4, 4, 0.25))  # Sparse matrix with 25% density
-]
+from matrix_mult.config import *
+from matrix_mult.plotter import plot_performance_results
 
 # Function to save matrix to file
 def save_matrix_row_by_row(rows, cols, density, filename):
@@ -58,6 +34,11 @@ def save_matrix_row_by_row(rows, cols, density, filename):
         # Write metadata
         f.write(f"{rows},{cols},{max_nonzeros}\n")
 
+        # Edge Case: if 0 Matrix
+        if(max_nonzeros == 0):
+            f.write("\n\n")
+            return
+
         row_lines = []
         for row_values in row_values_list:
             filtered_values = [str(v) for v in row_values] + ["*"] * (max_nonzeros - len(row_values))
@@ -71,9 +52,8 @@ def save_matrix_row_by_row(rows, cols, density, filename):
         f.write(",".join(index_lines))
     
 # Function to compare matrices
-def compare_matrices(file1, matrix2):
+def compare_matrices(matrix1, matrix2):
     try:
-        matrix1 = load_and_clean_matrix(file1)
         if(TESTING):
             print(f"Matrix of own Implementation: \n{matrix1}")
             print(f"Matrix of comparison: \n{matrix2}")
@@ -163,7 +143,6 @@ def load_and_clean_matrix(filename):
 
     return values
 
-
 # Function to run the tests in isolation
 def run_isolated_test(command, timeout):
     try:
@@ -214,8 +193,8 @@ def run_tests(num_runs, timeout=60):
 
             if execution_times:
                 avg_time = sum(execution_times) / len(execution_times)
-                print(f"Average Execution Time for V{impl} with matrix size {size}x{size}_D{density}: {avg_time:.6f} seconds")
                 performance_results[impl].append(avg_time)
+                print(f"Average Execution Time for V{impl} with matrix size {size}x{size}_D{density}: {avg_time:.6f} seconds")
                 
                 if COMPARE:
                     # Check correctness with matrixmultiplication module of numpy
@@ -224,7 +203,8 @@ def run_tests(num_runs, timeout=60):
                     else:
                         mathmul = np.matmul(load_and_clean_matrix(matrix_a_filename), load_and_clean_matrix(matrix_b_filename))                               
 
-                    if returncode == 0 and compare_matrices(os.path.join(RESULTS_DIR, f"result_V{impl}_{size}x{size}.txt"), mathmul):
+                    result_path = os.path.join(RESULTS_DIR, f"result_V{impl}_{size}x{size}.txt")
+                    if returncode == 0 and compare_matrices(load_and_clean_matrix(result_path), mathmul):
                         print(f"Output correctness: PASSED")
                     else:
                         print(f"Output correctness: FAILED")
@@ -249,36 +229,6 @@ def run_edge_case_tests():
             except Exception as e:
                 print(f"Edge case '{case_name}' Execution error: {e}")
 
-# Function to plot performance results
-def plot_performance_results(performance_results, densities):
-    num_densities = len(densities)
-    fig, axes = plt.subplots(num_densities, 1, figsize=(12, 8), sharex=True, sharey=True)
-    
-    if num_densities == 1:
-        axes = [axes]
-    
-    for i, density in enumerate(densities):
-        ax = axes[i]
-        for impl in IMPLEMENTATIONS:
-            # Filter out None values for plotting
-            sizes = []
-            times = []
-            for size, time in zip(MATRIX_SIZES, performance_results[i][impl]):
-                if time is not None:
-                    sizes.append(size)
-                    times.append(time)
-            if sizes and times:  # Ensure there's data to plot
-                ax.plot(sizes, times, marker='o', label=f"V:{impl}")
-        
-        ax.set_ylabel('Execution Time (s)')
-        ax.set_title(f'Density: {density}')
-        ax.grid(True)
-        ax.legend()
-
-    axes[-1].set_xlabel('Matrix Size ((NxM)/2)')
-    plt.suptitle('Performance Comparison of Matrix Multiplication Implementations')
-    plt.savefig(os.path.join(SCRIPT_DIR, f'performance_comparison.png'))
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Matrix Multiplication Performance Testing')
     parser.add_argument('-V','--versions', type=int, nargs='+', default=[0, 2, 4], help='Versions to test')
@@ -293,7 +243,7 @@ if __name__ == "__main__":
     
     parser.add_argument('-p', '--plot', action='store_false', help='Does NOT Plot performance results')
     parser.add_argument('-o', '--output', action='store_false', help='Outputs more specific')
-    parser.add_argument('-t', '--testing', action='store_true', help='Print Testing output')
+    parser.add_argument('-t', '--testing', action='store_true', help='Print Comparison Matrizes output to see differences')
     parser.add_argument('-gpu', '--gpu', action='store_true', help='Using GPU for Comparing Matrix Mul')
     parser.add_argument('-cmp', '--compare', action='store_false', help='Comparing with numpy matrix multiplication')
     args = parser.parse_args()
@@ -326,7 +276,7 @@ if __name__ == "__main__":
     
     # Plot performance results
     if args.plot:
-        plot_performance_results(performances, args.density)
+        plot_performance_results(performances, args.density, args.matrix_sizes, args.versions)
     
     # Run edge case tests
     if(args.edge):
