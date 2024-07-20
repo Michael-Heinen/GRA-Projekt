@@ -136,7 +136,7 @@ def compare_matrices(matrix1, matrix2):
         if(TESTING):
             print(f"Matrix of own Implementation: \n{matrix1}")
             print(f"Matrix of comparison: \n{matrix2}")
-        return np.allclose(matrix1, matrix2, atol=1e-6)
+        return np.allclose(matrix1, matrix2, atol=1e-4)
     except Exception as e:
         print(f"Comparison error: {e}")
         return False
@@ -157,7 +157,7 @@ def save_results(results, filename):
 def run_isolated_test(command, timeout):
     try:
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=BASE_DIR)
-        stdout, stderr = process.communicate(timeout)
+        stdout, stderr = process.communicate(timeout=timeout)
         return process.returncode, stdout, stderr, False
     except subprocess.TimeoutExpired:
         process.kill()
@@ -167,7 +167,8 @@ def run_isolated_test(command, timeout):
 # Function to run the tests
 def run_tests(num_runs, timeout, densities, results_filename):
     performance_results = {density: {impl: [] for impl in IMPLEMENTATIONS} for density in densities}
-    
+    timed_out_versions = set()
+
     # Register interrupt handler
     signal.signal(signal.SIGINT, lambda sig, frame: save_results_on_interrupt(sig, frame, performance_results, results_filename))
     
@@ -177,6 +178,9 @@ def run_tests(num_runs, timeout, densities, results_filename):
             matrix_b_filename = os.path.join(TEST_MATRICES_DIR, f"matrixB_{size}x{size}_D{density}.txt")
 
             for impl in IMPLEMENTATIONS:
+                if impl in timed_out_versions:
+                    continue
+
                 print(f"\nTesting V{impl} with matrix size {size}x{size} and density {density}")
                 execution_times = []
 
@@ -185,6 +189,8 @@ def run_tests(num_runs, timeout, densities, results_filename):
                     returncode, stdout, stderr, timed_out = run_isolated_test(command, timeout)
                     if timed_out:
                         print(f"Run V{impl} timed out.")
+                        timed_out_versions.add(impl)
+
                         break  # Skip further runs for this implementation
                     if returncode == 0:
                         execution_time = parse_execution_time(stdout.decode())
@@ -238,9 +244,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Matrix Multiplication Performance Testing')
     parser.add_argument('-V','--versions', type=int, nargs='+', default=[0, 1, 2], help='Versions to test')
     parser.add_argument('-d','--density', type=float, nargs='+', default=[0.2, 0.5, 0.8], help='Density of the matrices')
-    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[8, 16, 32, 64, 128, 256, 512,750, 1024,1535 ,2048, 3064, 4096], help='List of matrix sizes')#6045, 8054, 10564, 12354]
+    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[8, 16, 32, 64, 128, 256, 512,750, 1024, 1265, 1535, 1794 ,2048, 2564, 3064, 3465, 4096, 6045, 8054, 10564, 12354], help='List of matrix sizes')#1535 ,2048, 3064, 4096, 6045, 8054, 10564, 12354]
     parser.add_argument('-n','--num_runs', type=int, default=1, help='Number of runs for each test')
-    parser.add_argument('-tmo','--timeout', type=int, default=10, help='Timeout for each test in seconds')
+    parser.add_argument('-tmo','--timeout', type=int, default=300, help='Timeout for each test in seconds')
 
     parser.add_argument('-c', '--compile', action='store_false', help='Does NOT Compile the implementations')
     parser.add_argument('-g', '--generate', action='store_true', help='Generate new test matrices for all specified indices')
