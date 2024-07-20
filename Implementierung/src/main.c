@@ -37,7 +37,7 @@ void print_help(const char *progname)
     fprintf(stdout, "\n%s", help_msg);
 }
 
-void free_matrix(ELLPACKMatrix *matrix)
+void free_matrix(const ELLPACKMatrix *matrix, int version)
 {
     if (matrix)
     {
@@ -61,11 +61,11 @@ void free_matrix(ELLPACKMatrix *matrix)
     }
 }
 
-void handle_error(const char *message, ELLPACKMatrix *matrix_a, ELLPACKMatrix *matrix_b, ELLPACKMatrix *result)
+void handle_error(const char *message, ELLPACKMatrix *matrix_a, ELLPACKMatrix *matrix_b, ELLPACKMatrix *result, int version)
 {
-    free_matrix(matrix_a);
-    free_matrix(matrix_b);
-    free_matrix(result);
+    free_matrix(matrix_a, version);
+    free_matrix(matrix_b, version);
+    free_matrix(result, version);
 
     if (errno == 0)
     {
@@ -202,13 +202,13 @@ int main(int argc, char **argv)
 
     switch(version)
     {
-    case 0,1,4:
+    case 0:1:4:
         if (write_matrix_V1(output_file, &result, new_noNonZero) != 0)
         {
             handle_error("Error writing output matrix", &matrix_a, &matrix_b, &result);
         }
         break;
-    case 2,3:
+    case 2:3:
         if (write_matrix_V2(output_file, &result) != 0)
         {
             handle_error("Error writing output matrix", &matrix_a, &matrix_b, &result);
@@ -218,9 +218,9 @@ int main(int argc, char **argv)
             handle_error("Unknown version specified", &matrix_a, &matrix_b, &result);
     }
 
-    free_matrix(&matrix_a);
-    free_matrix(&matrix_b);
-    free_matrix(&result);
+    free_matrix(&matrix_a, version);
+    free_matrix(&matrix_b, version);
+    free_matrix(&result, version);
 
 
     return EXIT_SUCCESS;
