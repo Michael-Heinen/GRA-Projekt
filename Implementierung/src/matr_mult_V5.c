@@ -7,19 +7,19 @@
 void matr_mult_ellpack_V5(const ELLPACKMatrix *matrix_a, const ELLPACKMatrix *matrix_b, ELLPACKMatrix *matrix_result)
 {
     // Check if the number of columns in matrix_a is equal to the number of rows in matrix_b
-    if (matrix_a->noCols != matrix_b->noRows)
+    if (matrix_a->num_cols != matrix_b->num_rows)
     {
         fprintf(stderr, "Matrix dimensions do not match for multiplication\n");
         exit(EXIT_FAILURE);
     }
 
     // Initialize the result matrix dimensions and allocate space for values and indices
-    matrix_result->noRows = matrix_a->noRows;
-    matrix_result->noCols = matrix_b->noCols;
-    matrix_result->noNonZero = matrix_b->noCols;
+    matrix_result->num_rows = matrix_a->num_rows;
+    matrix_result->num_cols = matrix_b->num_cols;
+    matrix_result->num_non_zero = matrix_b->num_cols;
 
-    matrix_result->values = (float *)calloc(matrix_result->noRows * matrix_result->noNonZero, sizeof(float));
-    matrix_result->indices = (uint64_t *)calloc(matrix_result->noRows * matrix_result->noNonZero, sizeof(uint64_t));
+    matrix_result->values = (float *)calloc(matrix_result->num_rows * matrix_result->num_non_zero, sizeof(float));
+    matrix_result->indices = (uint64_t *)calloc(matrix_result->num_rows * matrix_result->num_non_zero, sizeof(uint64_t));
 
     if (!matrix_result->values || !matrix_result->indices)
     {
@@ -30,9 +30,9 @@ void matr_mult_ellpack_V5(const ELLPACKMatrix *matrix_a, const ELLPACKMatrix *ma
     }
 
     // Allocate temporary arrays to store intermediate results for the current row
-    float *tempValues = (float *)calloc(matrix_result->noCols, sizeof(float));
-    uint64_t *tempIndices = (uint64_t *)calloc(matrix_result->noCols, sizeof(uint64_t));
-    float *tempBRowValues = (float *)calloc(matrix_b->noCols, sizeof(float));
+    float *tempValues = (float *)calloc(matrix_result->num_cols, sizeof(float));
+    uint64_t *tempIndices = (uint64_t *)calloc(matrix_result->num_cols, sizeof(uint64_t));
+    float *tempBRowValues = (float *)calloc(matrix_b->num_cols, sizeof(float));
 
     if (!tempValues || !tempIndices || !tempBRowValues)
     {
@@ -46,58 +46,58 @@ void matr_mult_ellpack_V5(const ELLPACKMatrix *matrix_a, const ELLPACKMatrix *ma
     }
 
     // Loop through each row of matrix_a
-    for (uint64_t rowA = 0; rowA < matrix_a->noRows; ++rowA)
+    for (uint64_t rowA = 0; rowA < matrix_a->num_rows; ++rowA)
     {
         // Reset the temporary arrays for the new row of matrix_a
-        memset(tempValues, 0, matrix_result->noCols * sizeof(float));
-        memset(tempIndices, 0, matrix_result->noCols * sizeof(uint64_t));
+        memset(tempValues, 0, matrix_result->num_cols * sizeof(float));
+        memset(tempIndices, 0, matrix_result->num_cols * sizeof(uint64_t));
 
         // Loop through each non-zero element in the current row of matrix_a
-        for (uint64_t nzIndexA = 0; nzIndexA < matrix_a->noNonZero; ++nzIndexA)
+        for (uint64_t nzIndexA = 0; nzIndexA < matrix_a->num_non_zero; ++nzIndexA)
         {
-            uint64_t indexA = rowA * matrix_a->noNonZero + nzIndexA;
+            uint64_t indexA = rowA * matrix_a->num_non_zero + nzIndexA;
             __m256 simdValueA = _mm256_set1_ps(matrix_a->values[indexA]);
             uint64_t colA = matrix_a->indices[indexA];
-            uint64_t baseIndexB = colA * matrix_b->noNonZero;
+            uint64_t base_index_b = colA * matrix_b->num_non_zero;
 
             // Loop through each non-zero element in the current row of matrix_b
-            for (uint64_t nzIndexB = 0; nzIndexB < matrix_b->noNonZero; ++nzIndexB)
+            for (uint64_t num_non_zero_b = 0; num_non_zero_b < matrix_b->num_non_zero; ++num_non_zero_b)
             {
-                uint64_t indexB = baseIndexB + nzIndexB;
-                uint64_t colB = matrix_b->indices[indexB];
-                tempBRowValues[colB] += matrix_b->values[indexB];
-                tempIndices[colB] = colB;
+                uint64_t index_b = base_index_b + num_non_zero_b;
+                uint64_t col_b = matrix_b->indices[index_b];
+                tempBRowValues[col_b] += matrix_b->values[index_b];
+                tempIndices[col_b] = col_b;
             }
 
             // Perform SIMD multiplication and accumulation
-            for (uint64_t colB = 0; colB < (matrix_b->noCols - (matrix_b->noCols % 8)); colB += 8)
+            for (uint64_t col_b = 0; col_b < (matrix_b->num_cols - (matrix_b->num_cols % 8)); col_b += 8)
             {
-                __m256 simdValuesB = _mm256_loadu_ps(&tempBRowValues[colB]);
-                __m256 simdTempValues = _mm256_loadu_ps(&tempValues[colB]);
-                simdTempValues = _mm256_add_ps(simdTempValues, _mm256_mul_ps(simdValueA, simdValuesB));
-                _mm256_storeu_ps(&tempValues[colB], simdTempValues);
+                __m256 simd_values_b = _mm256_loadu_ps(&tempBRowValues[col_b]);
+                __m256 sind_temp_values = _mm256_loadu_ps(&tempValues[col_b]);
+                sind_temp_values = _mm256_add_ps(sind_temp_values, _mm256_mul_ps(simdValueA, simd_values_b));
+                _mm256_storeu_ps(&tempValues[col_b], sind_temp_values);
             }
 
             // Process remaining elements
             float a_value = matrix_a->values[indexA];
-            for (uint64_t remainB_Index = matrix_b->noCols - (matrix_b->noCols % 8); remainB_Index < matrix_b->noCols; ++remainB_Index)
+            for (uint64_t index_remain_b = matrix_b->num_cols - (matrix_b->num_cols % 8); index_remain_b < matrix_b->num_cols; ++index_remain_b)
             {
-                tempValues[remainB_Index] += tempBRowValues[remainB_Index] * a_value;
+                tempValues[index_remain_b] += tempBRowValues[index_remain_b] * a_value;
             }
 
             // Reset the temporary B row array for the next iteration
-            memset(tempBRowValues, 0, matrix_b->noCols * sizeof(float));
+            memset(tempBRowValues, 0, matrix_b->num_cols * sizeof(float));
         }
 
         // Transfer the non-zero values from the temporary values array to the result matrix
         uint64_t nzCountResult = 0;
-        for (uint64_t colResult = 0; colResult < matrix_result->noCols; ++colResult)
+        for (uint64_t index_col_result = 0; index_col_result < matrix_result->num_cols; ++index_col_result)
         {
-            if (tempValues[colResult] != 0.0f)
+            if (tempValues[index_col_result] != 0.0f)
             {
-                uint64_t resultIndex = rowA * matrix_result->noNonZero + nzCountResult;
-                matrix_result->values[resultIndex] = tempValues[colResult];
-                matrix_result->indices[resultIndex] = tempIndices[colResult];
+                uint64_t resultIndex = rowA * matrix_result->num_non_zero + nzCountResult;
+                matrix_result->values[resultIndex] = tempValues[index_col_result];
+                matrix_result->indices[resultIndex] = tempIndices[index_col_result];
                 nzCountResult++;
             }
         }

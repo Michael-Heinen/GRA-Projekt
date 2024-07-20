@@ -30,7 +30,7 @@ const char *help_inputFilesFormat =
     "\n"
     "Inputs Format:\n"
     "LINE | CONTENT\n"
-    "1 | <noRows>,<noCols>,<noNonZero>\n"
+    "1 | <num_rows>,<num_cols>,<num_non_zero>\n"
     "2 | <values>\n"
     "3 | <indices>\n"
     "\n"
@@ -41,8 +41,7 @@ const char *help_inputFilesFormat =
     "\n"
     "Lines 2 and 3 must contain the correct number of values\n";
 
-
-void print_inputFilesFormat()
+void print_input_files_format()
 {
     fprintf(stdout, help_inputFilesFormat);
 }
@@ -56,7 +55,7 @@ void print_help(const char *progname)
 {
     print_usage(progname);
     fprintf(stdout, "\n%s", help_msg);
-    print_inputFilesFormat();
+    print_input_files_format();
 }
 
 void free_matrix(ELLPACKMatrix *matrix, int version)
@@ -67,7 +66,7 @@ void free_matrix(ELLPACKMatrix *matrix, int version)
         {
             if (matrix->result_values)
             {
-                for (uint64_t i = 0; i < matrix->noCols; i++)
+                for (uint64_t i = 0; i < matrix->num_cols; i++)
                 {
                     free(matrix->result_values[i]);
                 }
@@ -77,13 +76,12 @@ void free_matrix(ELLPACKMatrix *matrix, int version)
 
             if (matrix->result_indices)
             {
-                for (uint64_t i = 0; i < matrix->noCols; i++)
+                for (uint64_t i = 0; i < matrix->num_cols; i++)
                 {
                     free(matrix->result_indices[i]);
                 }
 
                 free(matrix->result_indices);
-
             }
         }
         else
@@ -171,26 +169,26 @@ int main(int argc, char **argv)
         handle_error("Error reading input matrix A", &matrix_a, NULL, NULL, version);
     }
 
-    if (read_matrix(input_file_b, &matrix_b) !=0)
+    if (read_matrix(input_file_b, &matrix_b) != 0)
     {
         handle_error("Error reading input matrix B", &matrix_a, &matrix_b, NULL, version);
     }
 
-    if (control_indices(input_file_a, &matrix_a) !=0)
+    if (control_indices(input_file_a, &matrix_a) != 0)
     {
         handle_error("in control_indices_inputs (A)", &matrix_a, &matrix_b, NULL, version);
     }
 
-    if (control_indices(input_file_b, &matrix_b) !=0)
+    if (control_indices(input_file_b, &matrix_b) != 0)
     {
         handle_error("in control_indices (B)", &matrix_a, &matrix_b, NULL, version);
     }
 
-    // start clock
-    struct timespec start;
-    if (clock_gettime(CLOCK_MONOTONIC, &start) != 0)
+    // clock_start_time clock
+    struct timespec clock_start_time;
+    if (clock_gettime(CLOCK_MONOTONIC, &clock_start_time) != 0)
     {
-        handle_error("Error getting start time", &matrix_a, &matrix_b, NULL, version);
+        handle_error("Error getting clock time", &matrix_a, &matrix_b, NULL, version);
     }
 
     // ensure one second between time measurement
@@ -221,13 +219,13 @@ int main(int argc, char **argv)
     }
 
     // stop clock
-    struct timespec end;
-    if (clock_gettime(CLOCK_MONOTONIC, &end) != 0)
+    struct timespec clock_end_time;
+    if (clock_gettime(CLOCK_MONOTONIC, &clock_end_time) != 0)
     {
         handle_error("Error getting end time", &matrix_a, &matrix_b, &result, version);
     }
 
-    double time = end.tv_sec - start.tv_sec + 1e-9 * (end.tv_nsec - start.tv_nsec);
+    double time = clock_end_time.tv_sec - clock_start_time.tv_sec + 1e-9 * (clock_end_time.tv_nsec - clock_start_time.tv_nsec);
 
     if (benchmark)
     {
@@ -243,9 +241,8 @@ int main(int argc, char **argv)
     }
     else
     {
-        uint64_t new_noNonZero = compute_noNonZero(&result);
-
-        if (write_matrix_V1(output_file, &result, new_noNonZero) != 0)
+        uint64_t num_non_zero = compute_num_non_zero(&result);
+        if (write_matrix_V1(output_file, &result, num_non_zero) != 0)
         {
             handle_error("Error writing output matrix", &matrix_a, &matrix_b, &result, version);
         }
@@ -257,4 +254,3 @@ int main(int argc, char **argv)
 
     return EXIT_SUCCESS;
 }
-
