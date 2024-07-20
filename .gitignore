@@ -57,6 +57,8 @@ Implementierung/files/*
 Implementierung/*.png
 **/performance_comparison.png
 
+*.json
+
 .vscode
 .idea
 .venv

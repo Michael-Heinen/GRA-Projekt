@@ -19,9 +19,9 @@ os.makedirs(EDGE_MATRICES_DIR, exist_ok=True)
 EDGE_CASES = [
     ("empty_matrix", (0, 0)),  # Empty matrix
     ("single_element", (1, 1)),  # Single element matrix
-    ("all_zeros", (4, 4, 0.0)),  # All elements are zero
-    ("large_values", (4, 4, lambda: np.random.uniform(1e10, 1e12))),  # Very large values
-    ("small_values", (4, 4, lambda: np.random.uniform(-1e12, -1e10))),  # Very small (negative) values
+    ("all_zeros", (4, 4, 0,0)),  # All elements are zero
+    ("large_values", (4, 4, np.random.uniform(1e10, 1e12))),  # Very large values
+    ("small_values", (4, 4, np.random.uniform(-1e12, -1e10))),  # Very small (negative) values
     ("rectangular", (4, 2)),  # Rectangular matrix
-    ("sparse", (4, 4, 0.25))  # Sparse matrix with 25% density
+    ("sparse", (4, 4, 0,25))  # Sparse matrix with 25% density
 ]
