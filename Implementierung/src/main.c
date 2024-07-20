@@ -14,10 +14,13 @@
 
 // help and info messages
 const char *usage_msg =
+
     "Help Message (Usage): "
-    "./matrix_mult [-h] [-V version] [-B [iterations]] -a inputA -b inputB -o output\n";
+    "./main [-h] [-V version] [-B[iterations]] -a inputA -b inputB -o output\n"
+    "\n";
 
 const char *help_msg =
+
     "Help Message:\n"
     "Positional arguments:\n"
     "  -a, --input_a FILE     Input file for matrix A\n"
@@ -27,7 +30,8 @@ const char *help_msg =
     "Optional arguments:\n"
     "  -h, --help             Display this help message and exit\n"
     "  -V, --version VERSION  Specify the version of the multiplication algorithm (default is 0)\n"
-    "  -B, --benchmark [N]    Run benchmark with N iterations (default is 3)\n";
+    "  -B, --benchmark[N]     Run benchmark with N iterations (default is 3)\n"
+    "\n";
 
 const char *help_input_files_format =
     "\n"
@@ -37,12 +41,13 @@ const char *help_input_files_format =
     "2 | <values>\n"
     "3 | <indices>\n"
     "\n"
-    "Example:"
-    "4,4,2"
-    "5,*,6,*,0.5,7,3,*"
-    "0,*,1,*,0,1,3,*"
+    "Example:\n"
+    "4,4,2\n"
+    "5,*,6,*,0.5,7,3,*\n"
+    "0,*,1,*,0,1,3,*\n"
     "\n"
-    "Lines 2 and 3 must contain the correct number of values\n";
+    "Lines 2 and 3 must contain the correct number of values\n"
+    "\n";
 
 
 // functions to print help and info messages
@@ -133,7 +138,7 @@ int main(int argc, char **argv)
 
     int opt;
     char *input_file_a = NULL, *input_file_b = NULL, *output_file = NULL;
-    int version = 0, benchmark = 0;
+    int version = 0, benchmark = 1;
 
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
@@ -152,11 +157,32 @@ int main(int argc, char **argv)
             print_help(progname);
             exit(0);
         case 'V':
-            version = atoi(optarg);
+            {
+                 char *endptr;
+                 errno = 0;
+                 version = strtol(optarg, &endptr, 10);
+
+                 if (errno != 0 || *endptr != '\0' || version < 0 || version > 2) {
+                     print_help(progname);
+                     handle_error("Invalid value for -V. It must be 0, 1, or 2.", NULL, NULL, NULL);
+                 }
+            }
             break;
         case 'B':
-            benchmark = optarg ? atoi(optarg) : 1;
-            printf("Benchmark value: %d.\n", benchmark);
+            {
+                char *endptr;
+                errno = 0;
+                benchmark = (optarg != NULL) ? strtol(optarg, &endptr, 10) : 1;
+
+                if (optarg == NULL) {
+                    break;
+                }
+
+                if (errno != 0 || *endptr != '\0' || benchmark < 1) {
+                    print_help(progname);
+                    handle_error("Invalid value for -B. It must be an integer greater than or equal to 1.", NULL, NULL, NULL);
+                }
+            }
             break;
         case 'a':
             input_file_a = optarg;
@@ -175,8 +201,8 @@ int main(int argc, char **argv)
 
     if (!input_file_a || !input_file_b || !output_file)
     {
-        handle_error("Error: Wrong input/output formatting: Input and output files must be specified", NULL, NULL, NULL);
         print_usage(progname);
+        handle_error("Error: Input and output files must be specified", NULL, NULL, NULL);
     }
 
     // reading the ELLPACK input files into the ELLPACKMatrix struct and after that control_indices check the correctness of the input indices
