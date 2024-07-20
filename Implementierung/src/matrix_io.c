@@ -142,19 +142,21 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
                 fclose(file);
                 return -1;
             }
-            else
-            {
-                fprintf(stderr, "Error: There are more lines as 3.\n");
-                free(line);
-                fclose(file);
-                return -1;
-            }
+        }
+
+        if ((read = getline(&line, &len, file)) != -1)
+        {
+            fprintf(stderr, "Error: There are more lines as 3.\n");
+            free(line);
+            fclose(file);
+            return -1;
+
         }
 
     }
     else
     {
-        fprintf(stderr, "Error: There are no less then 3 lines.\n");
+        fprintf(stderr, "Error: There are less then 3 lines.\n");
         free(line);
         fclose(file);
         return -1;
