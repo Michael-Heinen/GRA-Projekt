@@ -222,6 +222,7 @@ int main(int argc, char **argv)
     free_matrix(&matrix_b);
     free_matrix(&result);
 
+
     return EXIT_SUCCESS;
 }
 
