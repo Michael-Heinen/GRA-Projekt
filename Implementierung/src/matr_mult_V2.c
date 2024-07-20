@@ -2,18 +2,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <immintrin.h>
+#include <stdbool.h>
 
 void matr_mult_ellpack_V2(const ELLPACKMatrix *restrict matrix_a, const ELLPACKMatrix *restrict matrix_b, ELLPACKMatrix *restrict matrix_result)
 {
+    bool free_input_matrix = false;
+
     // Check if dimensions match
     if (matrix_a->num_cols != matrix_b->num_rows)
     {
-        free(matrix_a->values);
-        free(matrix_a->indices);
-        free(matrix_b->values);
-        free(matrix_b->indices);
         fprintf(stderr, "Matrix dimensions do not match for multiplication\n");
-        exit(EXIT_FAILURE);
+        free_input_matrix = true;
+        goto free_input_matrix;
     }
 
     // Initialize dimensions and allocate memory for result_matrix
@@ -25,14 +25,11 @@ void matr_mult_ellpack_V2(const ELLPACKMatrix *restrict matrix_a, const ELLPACKM
 
     if (!matrix_result->result_values || !matrix_result->result_indices)
     {
-        free(matrix_a->values);
-        free(matrix_a->indices);
-        free(matrix_b->values);
-        free(matrix_b->indices);
         free(matrix_result->result_values);
         free(matrix_result->result_indices);
         fprintf(stderr, "Memory allocation failed (matr_mult_ellpack_V2 (V2))\n");
-        exit(EXIT_FAILURE);
+        free_input_matrix = true;
+        goto free_input_matrix;
     }
 
     // Allocate temporary array to store values b
@@ -40,15 +37,11 @@ void matr_mult_ellpack_V2(const ELLPACKMatrix *restrict matrix_a, const ELLPACKM
     
     if (!temp_values_row_b)
         {
-            free(matrix_a->values);
-            free(matrix_a->indices);
-            free(matrix_b->values);
-            free(matrix_b->indices);
-            free(temp_values_row_b);
             free(matrix_result->result_values);
             free(matrix_result->result_indices);
             fprintf(stderr, "Memory allocation failed (matr_mult_ellpack_V2 (V2))\n");
-            exit(EXIT_FAILURE);
+            free_input_matrix = true;
+            goto free_input_matrix;
         }
 
     uint64_t max_non_zero = 0;
@@ -68,15 +61,12 @@ void matr_mult_ellpack_V2(const ELLPACKMatrix *restrict matrix_a, const ELLPACKM
                 free(matrix_result->result_indices[i]);
             }
 
-            free(matrix_a->values);
-            free(matrix_a->indices);
-            free(matrix_b->values);
-            free(matrix_b->indices);
             free(temp_values_row_b);
             free(matrix_result->result_values);
             free(matrix_result->result_indices);
             fprintf(stderr, "Memory allocation failed (matr_mult_ellpack_V3)\n");
-            exit(EXIT_FAILURE);
+            free_input_matrix = true;
+            goto free_input_matrix;
         }
 
         // Iterate over non-zero elements of current row of matrix_a
@@ -150,4 +140,14 @@ void matr_mult_ellpack_V2(const ELLPACKMatrix *restrict matrix_a, const ELLPACKM
 
     // Free the allocated memory for the temporary arrays
     free(temp_values_row_b);
+
+free_input_matrix:
+    if (free_input_matrix)
+    {
+        free(matrix_a->values);
+        free(matrix_a->indices);
+        free(matrix_b->values);
+        free(matrix_b->indices);
+        exit(EXIT_FAILURE);
+    }
 }

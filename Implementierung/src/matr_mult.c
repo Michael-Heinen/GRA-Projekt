@@ -1,19 +1,19 @@
 #include "ellpack.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 
 void matr_mult_ellpack(const ELLPACKMatrix *restrict matrix_a, const ELLPACKMatrix *restrict matrix_b, ELLPACKMatrix *restrict matrix_result)
 {
+    bool free_input_matrix = false;
+
     // Check if dimensions match
     if (matrix_a->num_cols != matrix_b->num_rows)
     {
-        free(matrix_a->values);
-        free(matrix_a->indices);
-        free(matrix_b->values);
-        free(matrix_b->indices);
         fprintf(stderr, "Matrix dimensions do not match for multiplication\n");
-        exit(EXIT_FAILURE);
+        free_input_matrix = true;
+        goto free_input_matrix;
     }
 
     // Initialize dimensions and allocate memory for result_matrix
@@ -25,14 +25,11 @@ void matr_mult_ellpack(const ELLPACKMatrix *restrict matrix_a, const ELLPACKMatr
 
     if (!matrix_result->result_values || !matrix_result->result_indices)
     {
-        free(matrix_a->values);
-        free(matrix_a->indices);
-        free(matrix_b->values);
-        free(matrix_b->indices);
         free(matrix_result->result_values);
         free(matrix_result->result_indices);
         fprintf(stderr, "Memory allocation failed (matr_mult_ellpack_V3 (V3))\n");
-        exit(EXIT_FAILURE);
+        free_input_matrix = true;
+        goto free_input_matrix;
     }
     
     // Check if zero matrix
@@ -59,14 +56,11 @@ void matr_mult_ellpack(const ELLPACKMatrix *restrict matrix_a, const ELLPACKMatr
                 free(matrix_result->result_indices[i]);
             }
 
-            free(matrix_a->values);
-            free(matrix_a->indices);
-            free(matrix_b->values);
-            free(matrix_b->indices);
             free(matrix_result->result_values);
             free(matrix_result->result_indices);
             fprintf(stderr, "Memory allocation failed (matr_mult_ellpack_V3)\n");
-            exit(EXIT_FAILURE);
+            free_input_matrix = true;
+            goto free_input_matrix;
         }
 
         // Iterate over non-zero elements of current row of matrix_a
@@ -122,4 +116,14 @@ void matr_mult_ellpack(const ELLPACKMatrix *restrict matrix_a, const ELLPACKMatr
 
     // Set number of non_zero elements in result_matrix
     matrix_result->num_non_zero = max_non_zero;
+
+free_input_matrix:
+    if (free_input_matrix)
+    {
+        free(matrix_a->values);
+        free(matrix_a->indices);
+        free(matrix_b->values);
+        free(matrix_b->indices);
+        exit(EXIT_FAILURE);
+    }
 }

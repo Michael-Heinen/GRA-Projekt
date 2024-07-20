@@ -1,18 +1,18 @@
 #include "ellpack.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 void matr_mult_ellpack_V1(const ELLPACKMatrix *restrict matrix_a, const ELLPACKMatrix *restrict matrix_b, ELLPACKMatrix *restrict matrix_result)
 {
+    bool free_input_matrix = false;
+
     // Check if dimensions match
     if (matrix_a->num_cols != matrix_b->num_rows)
     {
-        free(matrix_a->values);
-        free(matrix_a->indices);
-        free(matrix_b->values);
-        free(matrix_b->indices);
         fprintf(stderr, "Matrix dimensions do not match for multiplication (matr_mult_ellpack_V1 (V1))\n");
-        exit(EXIT_FAILURE);
+        free_input_matrix = true;
+        goto free_input_matrix;
     }
 
     // Initialize dimensions and allocate memory for result_matrix
@@ -25,14 +25,11 @@ void matr_mult_ellpack_V1(const ELLPACKMatrix *restrict matrix_a, const ELLPACKM
 
     if (!matrix_result->values || !matrix_result->indices)
     {
-        free(matrix_a->values);
-        free(matrix_a->indices);
-        free(matrix_b->values);
-        free(matrix_b->indices);
         free(matrix_result->values);
         free(matrix_result->indices);
         fprintf(stderr, "Memory allocation failed (matr_mult_ellpack_V1 (V1))\n");
-        exit(EXIT_FAILURE);
+        free_input_matrix = true;
+        goto free_input_matrix;
     }
 
     // Iterate over rows of matrix_a
@@ -76,5 +73,15 @@ void matr_mult_ellpack_V1(const ELLPACKMatrix *restrict matrix_a, const ELLPACKM
                 }
             }
         }
+    }
+
+free_input_matrix:
+    if (free_input_matrix)
+    {
+        free(matrix_a->values);
+        free(matrix_a->indices);
+        free(matrix_b->values);
+        free(matrix_b->indices);
+        exit(EXIT_FAILURE);
     }
 }

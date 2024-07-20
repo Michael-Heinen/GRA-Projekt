@@ -127,7 +127,7 @@ int main(int argc, char **argv)
 
     int opt;
     char *input_file_a = NULL, *input_file_b = NULL, *output_file = NULL;
-    int version = 0, benchmark = 0;
+    int version = 2, benchmark = 0;
 
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
