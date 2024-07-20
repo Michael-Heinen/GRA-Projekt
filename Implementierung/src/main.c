@@ -41,11 +41,23 @@ void free_matrix(ELLPACKMatrix *matrix)
 {
     if (matrix)
     {
-        free(matrix->values);
-        free(matrix->indices);
+        if (version == 2 || version == 3)
+        {
+            for (uint64_t i = 0; i < matrix->noCols; i++)
+            {
+                free(matrix->result_values[i]);
+                free(matrix->result_indices[i]);
+            }
 
-        matrix->values = NULL;
-        matrix->indices = NULL;
+            free(matrix->result_values);
+            free(matrix->result_indices);
+        }
+        else
+        {
+            free(matrix->values);
+            free(matrix->indices);
+        }
+
     }
 }
 
@@ -187,9 +199,23 @@ int main(int argc, char **argv)
 
     uint64_t new_noNonZero = compute_noNonZero(&result);
 
-    if (write_matrix(output_file, &result, new_noNonZero) != 0)
+
+    switch(version)
     {
-        handle_error("Error writing output matrix", &matrix_a, &matrix_b, &result);
+    case 0,1,4:
+        if (write_matrix_V1(output_file, &result, new_noNonZero) != 0)
+        {
+            handle_error("Error writing output matrix", &matrix_a, &matrix_b, &result);
+        }
+        break;
+    case 2,3:
+        if (write_matrix_V2(output_file, &result) != 0)
+        {
+            handle_error("Error writing output matrix", &matrix_a, &matrix_b, &result);
+        }
+        break;
+    default:
+            handle_error("Unknown version specified", &matrix_a, &matrix_b, &result);
     }
 
     free_matrix(&matrix_a);
