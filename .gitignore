@@ -54,7 +54,7 @@ dkms.conf
 //own project compilation
 Implementierung/main
 Implementierung/files/*
-Implementierung/script/*.png
+Implementierung/*.png
 **/performance_comparison.png
 
 .vscode
