@@ -5,9 +5,10 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include <sys/types.h>
+#include <string.h>
 // #include <stdint.h>
 
-int read_matrix(const char *filename, ELLPACKMatrix *matrix)
+int read_matrix(const char *restrict filename, ELLPACKMatrix *restrict matrix)
 {
     //open input file
     FILE *file = fopen(filename, "r");
@@ -247,7 +248,7 @@ int read_matrix(const char *filename, ELLPACKMatrix *matrix)
     return 0;
     }
 
-int write_matrix_V1(const char *filename, const ELLPACKMatrix *matrix, uint64_t new_noNonZero)
+int write_matrix_V1(const char *restrict filename, const ELLPACKMatrix *restrict matrix, uint64_t new_noNonZero)
 {
     FILE *file = fopen(filename, "w");
     if (!file)
@@ -302,7 +303,7 @@ int write_matrix_V1(const char *filename, const ELLPACKMatrix *matrix, uint64_t 
     return 0;
 }
 
-int write_matrix_V2(const char *filename, const ELLPACKMatrix *matrix)
+int write_matrix_V2(const char *restrict filename, const ELLPACKMatrix *restrict matrix)
 {
     FILE *file = fopen(filename, "w");
     if (!file)
@@ -358,7 +359,7 @@ int write_matrix_V2(const char *filename, const ELLPACKMatrix *matrix)
 }
 
 // compute noNonZero in result matrix
-int compute_noNonZero(ELLPACKMatrix *matrix)
+int compute_noNonZero(ELLPACKMatrix *restrict matrix)
 {
     uint64_t maxNoNonZero = 0;
     for (uint64_t i = 0; i < matrix->noCols; i++)
@@ -380,10 +381,9 @@ int compute_noNonZero(ELLPACKMatrix *matrix)
     return maxNoNonZero;
 }
 
-int count_numbers_in_line(const char *line) {
+int count_numbers_in_line(char *restrict line) {
     int count = 0;
     char *token = strtok(line, ",");
-    char *last_token = NULL;
 
     while (token != NULL) {
         count++;
@@ -393,7 +393,7 @@ int count_numbers_in_line(const char *line) {
     return count;
 }
 
-int control_indices(const char *filename, const ELLPACKMatrix *matrix)
+int control_indices(const char *filename, const ELLPACKMatrix *restrict matrix)
 {
     for (uint64_t i = 0; i < matrix->noCols; i++)
     {

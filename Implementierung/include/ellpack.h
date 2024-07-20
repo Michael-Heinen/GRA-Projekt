@@ -20,7 +20,6 @@ void matr_mult_ellpack_V1(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPAC
 void matr_mult_ellpack_V2(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMatrix *result);
 void matr_mult_ellpack_V3(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMatrix *result);
 void matr_mult_ellpack_V4(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMatrix *result);
-void free_matrix(ELLPACKMatrix *matrix, int version);
-void handle_error(const char *message, ELLPACKMatrix *matrix_a, ELLPACKMatrix *matrix_b, ELLPACKMatrix *result, int version);
+void matr_mult_ellpack_V5(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMatrix *result);
 
 #endif // ELLPACK_H

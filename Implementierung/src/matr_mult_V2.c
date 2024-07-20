@@ -4,7 +4,7 @@
 #include <immintrin.h>
 
 // Function to multiply two matrices in ELLPACK format
-void matr_mult_ellpack_V2(const ELLPACKMatrix *matrixA, const ELLPACKMatrix *matrixB, ELLPACKMatrix *result)
+void matr_mult_ellpack_V2(const ELLPACKMatrix *restrict matrixA, const ELLPACKMatrix *restrict matrixB, ELLPACKMatrix *restrict result)
 {
     // Check if the number of columns in matrixA is equal to the number of rows in matrixB
     if (matrixA->noCols != matrixB->noRows)
@@ -41,6 +41,19 @@ void matr_mult_ellpack_V2(const ELLPACKMatrix *matrixA, const ELLPACKMatrix *mat
         result->result_values[rowA] = (float *)calloc(result->noCols, sizeof(float));
         result->result_indices[rowA] = (uint64_t *)calloc(result->noCols, sizeof(uint64_t));
 
+        if (!result->result_values[rowA] || !result->result_indices[rowA])
+        {
+            for (uint64_t i = 0; i <= rowA; ++i)
+            {
+                free(result->result_values[i]);
+                free(result->result_indices[i]);
+            }
+            free(result->result_values);
+            free(result->result_indices);
+            fprintf(stderr, "Memory allocation failed (matr_mult_ellpack_V3)\n");
+            exit(EXIT_FAILURE);
+        }
+
 
 
         // Loop through each non-zero element in the current row of matrixA
@@ -64,8 +77,6 @@ void matr_mult_ellpack_V2(const ELLPACKMatrix *matrixA, const ELLPACKMatrix *mat
                 uint64_t indexB = baseIndexB + nzIndexB;
                 // Get the column index and value from the current non-zero element in matrixB
                 uint64_t colB = matrixB->indices[indexB];
-                // Store the value in the temporary B row array
-                uint64_t valB = matrixB->values[indexB];
                 tempBRowValues[colB] += matrixB->values[indexB];
                 // Store the column index in the temporary indices array
                 result->result_indices[rowA][colB] = colB;
@@ -75,13 +86,13 @@ void matr_mult_ellpack_V2(const ELLPACKMatrix *matrixA, const ELLPACKMatrix *mat
             for (uint64_t colB = 0; colB < (matrixB->noCols - (matrixB->noCols % 4)); colB += 4)
             {
                 // Load 4 values from the temporary B row array into a SIMD register
-                __m128 simdValuesB = _mm_loadu_ps(&tempBRowValues[colB]);
+                __m128 simdValuesB = _mm_load_ps(&tempBRowValues[colB]);
                 // Load 4 values from the temporary values array into a SIMD register
-                __m128 simdTempValues = _mm_loadu_ps(&result->result_values[rowA][colB]);
+                __m128 simdTempValues = _mm_load_ps(&result->result_values[rowA][colB]);
                 // Multiply and accumulate the values
                 simdTempValues = _mm_add_ps(simdTempValues, _mm_mul_ps(simdValueA, simdValuesB));
                 // Store the result back into the temporary values array
-                _mm_storeu_ps(&result->result_values[rowA][colB], simdTempValues);
+                _mm_store_ps(&result->result_values[rowA][colB], simdTempValues);
             }
 
             float a_value = matrixA->values[indexA];

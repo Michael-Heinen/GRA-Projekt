@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void matr_mult_ellpack_V3(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPACKMatrix *result)
+void matr_mult_ellpack_V3(const ELLPACKMatrix *restrict a, const ELLPACKMatrix *restrict b, ELLPACKMatrix *restrict result)
 {
     if (a->noCols != b->noRows)
     {
@@ -12,7 +12,6 @@ void matr_mult_ellpack_V3(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPAC
 
     result->noRows = a->noRows;
     result->noCols = b->noCols;
-    result->noNonZero = b->noCols;
 
     result->result_values = (float **)calloc(result->noRows, sizeof(float*));
     result->result_indices = (uint64_t **)calloc(result->noRows, sizeof(uint64_t*));
@@ -38,6 +37,19 @@ void matr_mult_ellpack_V3(const ELLPACKMatrix *a, const ELLPACKMatrix *b, ELLPAC
 
         result->result_values[curr_a_row] = (float *)calloc(result->noCols, sizeof(float));
         result->result_indices[curr_a_row] = (uint64_t *)calloc(result->noCols, sizeof(uint64_t));
+
+        if (!result->result_values[curr_a_row] || !result->result_indices[curr_a_row])
+        {
+            for (uint64_t i = 0; i <= curr_a_row; ++i)
+            {
+                free(result->result_values[i]);
+                free(result->result_indices[i]);
+            }
+            free(result->result_values);
+            free(result->result_indices);
+            fprintf(stderr, "Memory allocation failed (matr_mult_ellpack_V3)\n");
+            exit(EXIT_FAILURE);
+        }
 
         for (uint64_t curr_a_nonZero = 0; curr_a_nonZero < a->noNonZero; ++curr_a_nonZero)
         {

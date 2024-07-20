@@ -26,6 +26,27 @@ const char *help_msg =
     "  -V, --version VERSION  Specify the version of the multiplication algorithm (default is 0)\n"
     "  -B, --benchmark [N]    Run benchmark with N iterations (default is 3)\n";
 
+const char *help_inputFilesFormat =
+    "\n"
+    "Inputs Format:\n"
+    "LINE | CONTENT\n"
+    "1 | <noRows>,<noCols>,<noNonZero>\n"
+    "2 | <values>\n"
+    "3 | <indices>\n"
+    "\n"
+    "Example:"
+    "4,4,2"
+    "5,*,6,*,0.5,7,3,*"
+    "0,*,1,*,0,1,3,*"
+    "\n"
+    "Lines 2 and 3 must contain the correct number of values\n";
+
+
+void print_inputFilesFormat()
+{
+    fprintf(stdout, help_inputFilesFormat);
+}
+
 void print_usage(const char *progname)
 {
     fprintf(stdout, usage_msg, progname, progname, progname);
@@ -35,6 +56,7 @@ void print_help(const char *progname)
 {
     print_usage(progname);
     fprintf(stdout, "\n%s", help_msg);
+    print_inputFilesFormat();
 }
 
 void free_matrix(ELLPACKMatrix *matrix, int version)
@@ -139,6 +161,7 @@ int main(int argc, char **argv)
     if (!input_file_a || !input_file_b || !output_file)
     {
         handle_error("Error: Wrong input/output formatting: Input and output files must be specified", NULL, NULL, NULL, version);
+        print_usage(progname);
     }
 
     ELLPACKMatrix matrix_a = {0}, matrix_b = {0}, result = {0};
