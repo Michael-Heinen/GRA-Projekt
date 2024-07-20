@@ -74,7 +74,7 @@ int read_matrix(const char *restrict filename, ELLPACKMatrix *restrict matrix)
 
     if (matrix->num_non_zero != 0)
     {
-        // line 2
+        // checking line 2
         if ((read = getline(&line, &len, file)) == -1)
         {
             fprintf(stderr, "Error reading line 2 (values).\n");
@@ -87,7 +87,7 @@ int read_matrix(const char *restrict filename, ELLPACKMatrix *restrict matrix)
             goto handle_error_io;
         }
 
-        // line 3
+        // checking line 3
         if ((read = getline(&line, &len, file)) == -1)
         {
             fprintf(stderr, "Error reading line 3 (indices).\n");
@@ -138,6 +138,7 @@ int read_matrix(const char *restrict filename, ELLPACKMatrix *restrict matrix)
     // set file position to the old "file scan position" to scan the values and indices lines (line 2 and 3)
     fseek(file, pos_scan_file, SEEK_SET);
 
+    // allocate the values and indices arrays
     matrix->values = (float *)malloc(matrix->num_rows * matrix->num_non_zero * sizeof(float));
     matrix->indices = (uint64_t *)malloc(matrix->num_rows * matrix->num_non_zero * sizeof(uint64_t));
 
@@ -147,6 +148,8 @@ int read_matrix(const char *restrict filename, ELLPACKMatrix *restrict matrix)
         goto handle_error_io;
     }
 
+
+    // for loop to scan/read the values and writing them in the value array
     for (uint64_t i = 0; i < matrix->num_rows * matrix->num_non_zero; ++i)
     {
         char ch;
@@ -175,6 +178,8 @@ int read_matrix(const char *restrict filename, ELLPACKMatrix *restrict matrix)
             }
         }
     }
+
+    // for loop to scan/read the indices and writing them in the indices array
     for (uint64_t i = 0; i < matrix->num_rows * matrix->num_non_zero; ++i)
     {
         char ch;
@@ -217,6 +222,7 @@ handle_error_io:
     return -1;
 }
 
+// Version 1 to write the one dimensional arrays into the output file
 int write_matrix_V1(const char *restrict filename, const ELLPACKMatrix *restrict matrix, uint64_t num_non_zero)
 {
     FILE *file = fopen(filename, "w");
@@ -271,6 +277,7 @@ int write_matrix_V1(const char *restrict filename, const ELLPACKMatrix *restrict
     return 0;
 }
 
+// Version 1 to write the two dimensional arrays into the output file
 int write_matrix_V2(const char *restrict filename, const ELLPACKMatrix *restrict matrix)
 {
     FILE *file = fopen(filename, "w");
@@ -347,6 +354,7 @@ int compute_num_non_zero(ELLPACKMatrix *restrict matrix)
     return max_num_non_zero;
 }
 
+// function to counting the number in a line between and after the commas
 int count_numbers_in_line(char *restrict line)
 {
     int count = 0;
@@ -361,10 +369,12 @@ int count_numbers_in_line(char *restrict line)
     return count;
 }
 
+// function to checks the indexes for multiple occurrences and whether an index is too large
 int control_indices(const char *filename, const ELLPACKMatrix *restrict matrix)
 {
     for (uint64_t i = 0; i < matrix->num_cols; i++)
     {
+        // temp_array with the size of the rows (checking indices separate for each row)
         bool *temp_array = (bool *)calloc(matrix->num_rows, sizeof(bool));
         if (!temp_array)
         {
@@ -372,10 +382,11 @@ int control_indices(const char *filename, const ELLPACKMatrix *restrict matrix)
             fprintf(stderr, "Memory allocation failed in control_indices. Filename: %s\n", filename);
             return -1;
         }
-
+        // bools to check the zeros, because we convert the char '*' to zeros
         bool first_zero = false;
         bool second_zero = false;
 
+        // for loop to iterate over the temp array
         for (uint64_t j = 0; j < matrix->num_non_zero; j++)
         {
             if ((temp_array[matrix->indices[i * matrix->num_non_zero + j]] || second_zero) && matrix->indices[i * matrix->num_non_zero + j] != 0)
