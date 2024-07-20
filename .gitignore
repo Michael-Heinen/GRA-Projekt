@@ -56,6 +56,8 @@ Implementierung/main
 Implementierung/files/*
 Implementierung/script/*.png
 
+*.json
+
 .vscode
 .idea
 .venv
