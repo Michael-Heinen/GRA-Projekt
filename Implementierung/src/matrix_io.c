@@ -111,7 +111,7 @@ int read_matrix(const char *restrict filename, ELLPACKMatrix *restrict matrix)
         if (*line != '\n')
         {
             fprintf(stderr, "Error: In the values line (line 2) are characters, but num_non_zero == 0.\n");
-            handle_error_io(line, file);
+            return handle_error_io(line, file);
         }
 
         if ((read = getline(&line, &len, file)) != -1)
