@@ -33,14 +33,14 @@ def plot_performance_results(json_filename, densities, matrix_sizes, implementat
         ax.legend()
 
     # Add shared x-axis label
-    axes[-1].set_xlabel('Matrix Size ((NxM)/2)')
+    axes[-1].set_xlabel('Matrix Dimension N for input Matrices NxN')
     
     # Add suptitle
     plt.suptitle('Performance Comparison of Matrix Multiplication Implementations')
 
     # Add additional information as text outside the plots
-    textstr = f'Timeout: {timeout}s\nNum of Benchmarks (-B): {num_runs}\nVersions (-V): {", ".join(map(str, implementations))}'
+    textstr = f'Timeout: {timeout}s / 1 Benchmark \nNum of Benchmarks (-B): {num_runs}\nVersions (-V): {", ".join(map(str, implementations))}'
     plt.gcf().text(0.12, 0.9, textstr, fontsize=12, verticalalignment='bottom', horizontalalignment='center', bbox=dict(facecolor='white', edgecolor='black'))
 
     # Save the plot
-    plt.savefig(os.path.join(BASE_DIR, 'performance_comparison.png'))
+    plt.savefig(os.path.join(SCRIPT_DIR, 'performance_comparison.png'))

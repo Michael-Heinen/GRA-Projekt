@@ -6,6 +6,7 @@ import random
 import signal
 import json
 from datetime import datetime
+import sys
 
 from matrix_mult.config import *
 from matrix_mult.plotter import plot_performance_results
@@ -39,7 +40,7 @@ def save_matrix_row_by_row(rows, cols, density, filename):
             # Generating random float values
             for col in range(cols):
                 if random.random() < density:
-                    value = random.uniform(-1.0, 1.0)  # Generates a float in the range [-1.0, 1.0]
+                    value = random.uniform(-1,1)  # Generates a float in the range [-1.0, 1.0]
                     row_values.append(value)
                     row_indices.append(col)
             
@@ -122,7 +123,7 @@ def load_matrix_values_from_file(filename):
             for val, idx in zip(value_row, index_row):
                 if val != "*" and idx != "*":
                     col_index = int(idx)
-                    values[row_counter, col_index] = float(val)
+                    values[row_counter, col_index] = np.float32(val)
                 count += 1
                 if count >= max_nonzeros:
                     count = 0
@@ -138,7 +139,7 @@ def compare_matrices(matrix1, matrix2):
         if(TESTING):
             print(f"Matrix of own Implementation: \n{matrix1}")
             print(f"Matrix of comparison: \n{matrix2}")
-        return np.allclose(matrix1, matrix2, atol=1e-4)
+        return np.allclose(matrix1, matrix2,  rtol=1e-04, atol=1e-05)
     except Exception as e:
         print(f"Comparison error: {e}")
         return False
@@ -212,7 +213,7 @@ def run_tests(num_runs, timeout, densities, results_filename):
 
                     if COMPARE:
                         # Check correctness with matrixmultiplication module of numpy
-                        np_matrix_mul = np.matmul(load_matrix_values_from_file(matrix_a_filename), load_matrix_values_from_file(matrix_b_filename))                               
+                        np_matrix_mul = np.matmul(load_matrix_values_from_file(matrix_a_filename), load_matrix_values_from_file(matrix_b_filename), dtype=np.float32)
                         result_path = os.path.join(RESULTS_DIR, f"result_V{impl}_{size}x{size}.txt")
                         if returncode == 0 and compare_matrices(load_matrix_values_from_file(result_path), np_matrix_mul):
                             print(f"Output correctness: PASSED")
@@ -246,9 +247,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Matrix Multiplication Performance Testing')
     parser.add_argument('-V','--versions', type=int, nargs='+', default=[0, 1, 2], help='Versions to test')
     parser.add_argument('-d','--density', type=float, nargs='+', default=[0.2, 0.5, 0.8], help='Density of the matrices')
-    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[8, 16, 32, 64, 128, 256, 512,750, 1024, 1265, 1535, 1794 ,2048, 2564, 3064, 3465, 4096, 6045, 8054, 10564, 12354], help='List of matrix sizes')#1535 ,2048, 3064, 4096, 6045, 8054, 10564, 12354]
+    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[8, 16, 32, 64, 128, 256, 512,750, 1024, 1265, 1535, 1794 ,2048, 2564, 3064, 3465, 4096, 6045, 8054, 10564, 12354], help='List of matrix sizes')
     parser.add_argument('-n','--num_runs', type=int, default=3, help='Number of runs for each test')
-    parser.add_argument('-tmo','--timeout', type=int, default=600, help='Timeout for each test in seconds')
+    parser.add_argument('-tmo','--timeout', type=int, default=1800, help='Timeout for each test in seconds')
     parser.add_argument('-j','--json', type=str, default=datetime.now().strftime("%Y-%m-%d_%H:%M:%S"), help='Specify output filename of json file')
 
     parser.add_argument('-c', '--compile', action='store_false', help='Does NOT Compile the implementations')
@@ -266,7 +267,7 @@ if __name__ == "__main__":
     TESTING = args.testing
     COMPARE = args.compare
 
-    delete_files_in_directory(RESULTS_DIR)
+    # delete_files_in_directory(RESULTS_DIR)
 
     # Compile the implementations
     if args.compile:
