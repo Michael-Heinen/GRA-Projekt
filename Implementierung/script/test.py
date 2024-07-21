@@ -2,7 +2,6 @@ import os
 import subprocess
 import numpy as np
 import argparse
-import time
 import random
 import signal
 import json
@@ -18,7 +17,7 @@ def compile_implementations():
     except subprocess.CalledProcessError as e:
         print(e.output)
 
-# Function to parse execution time from the C program output
+# Function to parse execution time from the main program output
 def parse_execution_time(output):
     for line in output.splitlines():
         if "Average execution time:" in line:
@@ -33,10 +32,11 @@ def save_matrix_row_by_row(rows, cols, density, filename):
 
     with open(filename, 'w') as f:
         # First pass: Generate the matrix and determine max_nonzeros
-        for row in range(rows):
+        for _ in range(rows):
             row_values = []
             row_indices = []
 
+            # Generating random float values
             for col in range(cols):
                 if random.random() < density:
                     value = random.uniform(-1.0, 1.0)  # Generates a float in the range [-1.0, 1.0]
@@ -47,20 +47,22 @@ def save_matrix_row_by_row(rows, cols, density, filename):
             row_values_list.append(row_values)
             row_indices_list.append(row_indices)
 
-        # Write metadata
+        # write ELLPACK Metadata into first line
         f.write(f"{rows},{cols},{max_nonzeros}\n")
 
-        # Edge Case: if 0 Matrix
+        # edge case: if null matrix
         if(max_nonzeros == 0):
             f.write("\n\n")
             return
 
+        # write values in second line
         row_lines = []
         for row_values in row_values_list:
             filtered_values = [str(v) for v in row_values] + ["*"] * (max_nonzeros - len(row_values))
             row_lines.append(",".join(filtered_values))
         f.write(",".join(row_lines) + "\n")
 
+        # write indices in third line
         index_lines = []
         for row_indices in row_indices_list:
             filtered_indices = [str(i) for i in row_indices] + ["*"] * (max_nonzeros - len(row_indices))
@@ -68,7 +70,7 @@ def save_matrix_row_by_row(rows, cols, density, filename):
         f.write(",".join(index_lines))
     
 
-# Deleting test files for regenerating them
+# Deleting files for a specific directory
 def delete_files_in_directory(directory_path):
     try:
         files = os.listdir(directory_path)
@@ -103,19 +105,19 @@ def generate_edge_case_matrices():
             save_matrix_row_by_row(rows, cols, density, matrix_b_filename)
 
 # load and clean matrixes for comparison
-def load_and_clean_matrix(filename):
+def load_matrix_values_from_file(filename):
     with open(filename, 'r') as f:
         rows, cols, max_nonzeros = map(int, f.readline().strip().split(','))
         
         value_lines = [f.readline().strip().split(',')]
         index_lines = [f.readline().strip().split(',')]
-
         values = np.zeros((rows, cols))
         
         value_row = value_lines[0]
         index_row = index_lines[0]
         count = 0
         row_counter = 0
+
         try:
             for val, idx in zip(value_row, index_row):
                 if val != "*" and idx != "*":
@@ -157,19 +159,19 @@ def save_results(results, filename):
 def run_isolated_test(command, timeout):
     try:
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=BASE_DIR)
-        stdout, stderr = process.communicate(timeout=timeout)
+        stdout, stderr = process.communicate(timeout)
         return process.returncode, stdout, stderr, False
     except subprocess.TimeoutExpired:
         process.kill()
         stdout, stderr = process.communicate()
         return -1, stdout, stderr, True
 
-# Function to run the tests
+# Function to run the all tests based on specified arguments or default arguments
 def run_tests(num_runs, timeout, densities, results_filename):
     performance_results = {density: {impl: [] for impl in IMPLEMENTATIONS} for density in densities}
     timed_out_versions = set()
 
-    # Register interrupt handler
+    # Register interrupt by Keyboard Interruption ->  save results
     signal.signal(signal.SIGINT, lambda sig, frame: save_results_on_interrupt(sig, frame, performance_results, results_filename))
     
     for size in MATRIX_SIZES:
@@ -210,9 +212,9 @@ def run_tests(num_runs, timeout, densities, results_filename):
 
                     if COMPARE:
                         # Check correctness with matrixmultiplication module of numpy
-                        mathmul = np.matmul(load_and_clean_matrix(matrix_a_filename), load_and_clean_matrix(matrix_b_filename))                               
+                        np_matrix_mul = np.matmul(load_matrix_values_from_file(matrix_a_filename), load_matrix_values_from_file(matrix_b_filename))                               
                         result_path = os.path.join(RESULTS_DIR, f"result_V{impl}_{size}x{size}.txt")
-                        if returncode == 0 and compare_matrices(load_and_clean_matrix(result_path), mathmul):
+                        if returncode == 0 and compare_matrices(load_matrix_values_from_file(result_path), np_matrix_mul):
                             print(f"Output correctness: PASSED")
                         else:
                             print(f"Output correctness: FAILED")
@@ -245,8 +247,9 @@ if __name__ == "__main__":
     parser.add_argument('-V','--versions', type=int, nargs='+', default=[0, 1, 2], help='Versions to test')
     parser.add_argument('-d','--density', type=float, nargs='+', default=[0.2, 0.5, 0.8], help='Density of the matrices')
     parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[8, 16, 32, 64, 128, 256, 512,750, 1024, 1265, 1535, 1794 ,2048, 2564, 3064, 3465, 4096, 6045, 8054, 10564, 12354], help='List of matrix sizes')#1535 ,2048, 3064, 4096, 6045, 8054, 10564, 12354]
-    parser.add_argument('-n','--num_runs', type=int, default=1, help='Number of runs for each test')
-    parser.add_argument('-tmo','--timeout', type=int, default=300, help='Timeout for each test in seconds')
+    parser.add_argument('-n','--num_runs', type=int, default=3, help='Number of runs for each test')
+    parser.add_argument('-tmo','--timeout', type=int, default=600, help='Timeout for each test in seconds')
+    parser.add_argument('-j','--json', type=str, default=datetime.now().strftime("%Y-%m-%d_%H:%M:%S"), help='Specify output filename of json file')
 
     parser.add_argument('-c', '--compile', action='store_false', help='Does NOT Compile the implementations')
     parser.add_argument('-g', '--generate', action='store_true', help='Generate new test matrices for all specified indices')
@@ -277,14 +280,13 @@ if __name__ == "__main__":
     for density in args.density:
         # Generate test matrices if needed
         generate_test_matrices(density)
-        
-    
-    results_filename = os.path.join(BASE_DIR, f'performance_results_{datetime.now().strftime("%Y-%m-%d_%H:%M:%S")}.json')
+
+    results_filename = os.path.join(BASE_DIR, f'performance_results_{args.json}.json')
     # Run matrix tests
     performances = run_tests(args.num_runs, args.timeout, args.density, results_filename)
     # Plot performance results
     if args.plot:
-        plot_performance_results(results_filename, args.density, args.matrix_sizes, args.versions)
+        plot_performance_results(results_filename, args.density, args.matrix_sizes, args.versions, args.timeout, args.num_runs)
     
     # Run edge case tests
     if(args.edge):

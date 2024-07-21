@@ -4,7 +4,7 @@ import json
 from .config import *
 
 # Function to plot performance results from JSON file
-def plot_performance_results(json_filename, densities, matrix_sizes, implementations):
+def plot_performance_results(json_filename, densities, matrix_sizes, implementations, timeout, num_runs):
     with open(json_filename, 'r') as f:
         performance_results = json.load(f)
 
@@ -20,7 +20,7 @@ def plot_performance_results(json_filename, densities, matrix_sizes, implementat
             # Filter out None values for plotting
             sizes = []
             times = []
-            for size, time in zip(matrix_sizes, performance_results[str(density)][impl]):
+            for size, time in zip(matrix_sizes, performance_results[str(density)][str(impl)]):
                 if time is not None:
                     sizes.append(size)
                     times.append(time)
@@ -32,6 +32,15 @@ def plot_performance_results(json_filename, densities, matrix_sizes, implementat
         ax.grid(True)
         ax.legend()
 
+    # Add shared x-axis label
     axes[-1].set_xlabel('Matrix Size ((NxM)/2)')
+    
+    # Add suptitle
     plt.suptitle('Performance Comparison of Matrix Multiplication Implementations')
-    plt.savefig(os.path.join(BASE_DIR, f'performance_comparison.png'))
+
+    # Add additional information as text outside the plots
+    textstr = f'Timeout: {timeout}s\nNum of Benchmarks (-B): {num_runs}\nVersions (-V): {", ".join(map(str, implementations))}'
+    plt.gcf().text(0.12, 0.9, textstr, fontsize=12, verticalalignment='bottom', horizontalalignment='center', bbox=dict(facecolor='white', edgecolor='black'))
+
+    # Save the plot
+    plt.savefig(os.path.join(BASE_DIR, 'performance_comparison.png'))

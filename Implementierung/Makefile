@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c17 -O2 -I$(INC_DIR) -mavx
+CFLAGS = -Wall -Wextra -std=c17 -O2 -I$(INC_DIR)
 
 BUILD_DIR = obj
 SRC_DIR = src
@@ -32,8 +32,4 @@ run: $(TARGET)
 help:
 	./$(TARGET) --help
 
-valgrind: CFLAGS += -g
-valgrind: $(TARGET)
-	valgrind --leak-check=full ./$(TARGET) -a files/test_matrices/matrixA_4x4_D0.2.txt -b files/test_matrices/matrixB_4x4_D0.2.txt -o files/results/result_4x4_D0.2.txt
-
-.PHONY: all clean run help valgrind
+.PHONY: all clean run help 
