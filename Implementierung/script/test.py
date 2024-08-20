@@ -6,7 +6,6 @@ import random
 import signal
 import json
 from datetime import datetime
-import sys
 
 from matrix_mult.config import *
 from matrix_mult.plotter import plot_performance_results
@@ -243,25 +242,40 @@ def run_edge_case_tests(timeout):
             except Exception as e:
                 print(f"Edge case '{case_name}' Execution error: {e}")
 
+def print_parameters(args):
+    print("Execution Parameters:")
+    print(f"Versions: {args.versions}")
+    print(f"Densities: {args.density}")
+    print(f"Matrix Sizes: {args.matrix_sizes}")
+    print(f"Number of Runs: {args.num_runs}")
+    print(f"Timeout: {args.timeout}")
+    print(f"Compile: {args.compile}")
+    print(f"Generate New Matrices: {args.generate}")
+    print(f"Test Edge Cases: {args.edge}")
+    print(f"Plot Results: {args.plot}")
+    print(f"JSON Filename: {args.json}")
+    print(f"Compare with Numpy: {args.compare}")
+    print(f"Testing Mode: {args.testing}")
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Matrix Multiplication Performance Testing')
-    parser.add_argument('-V','--versions', type=int, nargs='+', default=[0, 1, 2], help='Versions to test')
-    parser.add_argument('-d','--density', type=float, nargs='+', default=[0.2, 0.5, 0.8], help='Density of the matrices')
-    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[8, 16, 32, 64, 128, 256, 512,750, 1024, 1265, 1535, 1794 ,2048, 2564, 3064, 3465, 4096, 6045, 8054, 10564, 12354], help='List of matrix sizes')
-    parser.add_argument('-n','--num_runs', type=int, default=3, help='Number of runs for each test')
-    parser.add_argument('-tmo','--timeout', type=int, default=1800, help='Timeout for each test in seconds')
-    parser.add_argument('-j','--json', type=str, default=datetime.now().strftime("%Y-%m-%d_%H:%M:%S"), help='Specify output filename of json file')
+    parser.add_argument('-V','--versions', type=int, nargs='+', default=[0, 1, 2], help='List of Versions to test (0-2)')
+    parser.add_argument('-d','--density', type=float, nargs='+', default=[0.2, 0.5, 0.8], help='List of density for generated matrices (0.0-1.0)')
+    parser.add_argument('-ms','--matrix_sizes', type=int, nargs='+', default=[8, 16, 32, 64, 128, 256, 512,750, 1024, 1265, 1535, 1794 ,2048, 2564, 3064, 3465, 4096, 6045, 8054, 10564, 12354], help='List of matrix sizes (int)')
+    parser.add_argument('-n','--num_runs', type=int, default=3, help='Number of runs for each test (int)')
+    parser.add_argument('-tmo','--timeout', type=int, default=1800, help='Specify Timeout in seconds, to prevent executing long execution times of a algorithm')
 
-    parser.add_argument('-c', '--compile', action='store_false', help='Does NOT Compile the implementations')
-    parser.add_argument('-g', '--generate', action='store_true', help='Generate new test matrices for all specified indices')
+    parser.add_argument('-c', '--compile', action='store_false', help='Does NOT compile the implementations')
+    parser.add_argument('-g', '--generate', action='store_true', help='Deletes old test matrices, and generates new ones')
     parser.add_argument('-e', '--edge', action='store_true', help='Test edge case matrices')
     
     parser.add_argument('-p', '--plot', action='store_false', help='Does NOT Plot performance results')
-    parser.add_argument('-o', '--output', action='store_false', help='Outputs more specific')
-    parser.add_argument('-t', '--testing', action='store_true', help='Print Comparison Matrizes output to see differences')
-    parser.add_argument('-cmp', '--compare', action='store_false', help='Comparing with numpy matrix multiplication')
+    parser.add_argument('-j','--json', type=str, default=datetime.now().strftime("%Y-%m-%d_%H:%M:%S"), help='Specify output filename of json file')
+    parser.add_argument('-cmp', '--compare', action='store_false', help='Do NOT verify correctnes with numpy matrix multiplication')
+    parser.add_argument('-t', '--testing', action='store_true', help='Print Comparison Matrizes to see differences')
     args = parser.parse_args()
-    
+    print_parameters(args)
+
     MATRIX_SIZES = args.matrix_sizes
     IMPLEMENTATIONS = args.versions
     TESTING = args.testing
